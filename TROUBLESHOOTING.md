@@ -51,3 +51,10 @@
 - **해결**: `authHeader()`를 `async`로 바꾸고 `(await cookies()).get(...)`로 수정, 호출부(`apiGet`, `apiPost`)에서도 `await authHeader()`로 변경.
 - **덤**: Next.js 16에서 `middleware.ts` 컨벤션 자체도 deprecated되어 `proxy.ts`로 이름이 바뀜 (빌드 시 경고). 공식 코드모드(`npx @next/codemod@canary middleware-to-proxy .`)로 `middleware.ts` → `proxy.ts`, `export function middleware` → `export function proxy`로 마이그레이션.
 - **미해결로 남겨둠**: `package.json`의 `next` 버전을 실제로 14로 고정할지, 문서(`docs/PRD.md` 등)를 16 기준으로 갱신할지는 별도 결정 필요.
+
+## 8. 보유 종목/거래 내역이 0개인 신규 계정에서 대시보드·거래내역이 500
+
+- **증상**: 로그인은 되는데 `/api/portfolio/summary`, `/api/orders`(거래내역)이 `ORA-00936: missing expression`으로 500. 회원가입 직후(=아직 한 번도 매수 안 한) 모든 계정에서 100% 재현됨 — API 키(KIS/OpenAI) 문제가 아니었음.
+- **원인**: `PortfolioService.getSummary()`와 `OrderService.getOrderHistory()`가 각각 보유 종목/주문 내역에서 뽑은 종목 코드 리스트로 `StockMapper.findAllByCodes(codes)`를 호출하는데, 리스트가 **비어있으면** MyBatis `<foreach>`가 `WHERE code IN ()`을 생성함 — Oracle(및 대부분의 DB)에서 빈 `IN ()`은 SQL 문법 오류. 보유 종목이 0개(신규 가입 직후)이거나 주문 내역이 0건이면 항상 이 리스트가 비어있어서, **사실상 모든 신규 유저의 첫 대시보드 진입에서 100% 재현**되는 버그였음.
+- **해결**: 두 호출부 모두 코드 리스트가 비어있으면 `findAllByCodes`를 호출하지 않고 바로 빈 `Map`을 사용하도록 가드 추가 (`PortfolioService.java`, `OrderService.java`).
+- **교훈**: MyBatis `<foreach>`로 `IN` 절을 만들 때 컬렉션이 비어있을 수 있는 호출부는 반드시 호출 전에 빈 리스트를 걸러낼 것. XML의 `<foreach>` 자체는 빈 컬렉션을 막아주지 않음.

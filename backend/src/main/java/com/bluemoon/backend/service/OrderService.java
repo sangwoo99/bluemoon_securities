@@ -117,9 +117,12 @@ public class OrderService {
                 ? orderMapper.countByAccountId(account.getId())
                 : orderMapper.countByAccountIdAndStockCode(account.getId(), stockCode);
 
-        Map<String, Stock> stocksByCode = stockMapper.findAllByCodes(orders.stream().map(Order::getStockCode).distinct().toList())
-                .stream()
-                .collect(java.util.stream.Collectors.toMap(Stock::getCode, Function.identity()));
+        List<String> stockCodes = orders.stream().map(Order::getStockCode).distinct().toList();
+        Map<String, Stock> stocksByCode = stockCodes.isEmpty()
+                ? Map.of()
+                : stockMapper.findAllByCodes(stockCodes)
+                        .stream()
+                        .collect(java.util.stream.Collectors.toMap(Stock::getCode, Function.identity()));
 
         List<OrderHistoryResponse> content = orders.stream()
                 .map(o -> new OrderHistoryResponse(

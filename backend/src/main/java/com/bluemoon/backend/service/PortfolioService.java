@@ -38,9 +38,12 @@ public class PortfolioService {
                 .orElseThrow(() -> new ApiException(ErrorCode.ACCOUNT_NOT_FOUND));
 
         List<Holding> holdings = holdingMapper.findByAccountIdAndQuantityGreaterThan(account.getId(), 0L);
-        Map<String, Stock> stocksByCode = stockMapper.findAllByCodes(holdings.stream().map(Holding::getStockCode).toList())
-                .stream()
-                .collect(java.util.stream.Collectors.toMap(Stock::getCode, Function.identity()));
+        List<String> stockCodes = holdings.stream().map(Holding::getStockCode).toList();
+        Map<String, Stock> stocksByCode = stockCodes.isEmpty()
+                ? Map.of()
+                : stockMapper.findAllByCodes(stockCodes)
+                        .stream()
+                        .collect(java.util.stream.Collectors.toMap(Stock::getCode, Function.identity()));
 
         BigDecimal totalValue = BigDecimal.ZERO;
         BigDecimal totalCost = BigDecimal.ZERO;
