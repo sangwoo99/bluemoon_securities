@@ -12,7 +12,7 @@
     </resultMap>
 
     <!-- 오직 배치(하루 1회)만 이 매퍼로 INSERT한다. 요청 경로(/api/insights/*)는 항상 조회만 한다 (CLAUDE.md 절대 규칙). -->
-    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id" keyColumn="id">
         INSERT INTO ai_insights (stock_code, content, sources, generated_at)
         VALUES (#{stockCode}, #{content},
                 #{sources, typeHandler=com.bluemoon.backend.mapper.handler.InsightSourceListTypeHandler},

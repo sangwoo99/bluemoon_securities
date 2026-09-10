@@ -10,7 +10,7 @@
         <result column="updated_at" property="updatedAt"/>
     </resultMap>
 
-    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id" keyColumn="id">
         INSERT INTO accounts (user_id, cash_balance, created_at, updated_at)
         VALUES (#{userId}, #{cashBalance}, #{createdAt}, #{updatedAt})
     </insert>

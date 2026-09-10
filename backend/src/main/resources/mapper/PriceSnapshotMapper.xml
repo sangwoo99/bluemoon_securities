@@ -9,7 +9,7 @@
         <result column="snapshot_date" property="snapshotDate"/>
     </resultMap>
 
-    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id" keyColumn="id">
         INSERT INTO price_snapshots (stock_code, price, snapshot_date)
         VALUES (#{stockCode}, #{price}, #{snapshotDate})
     </insert>

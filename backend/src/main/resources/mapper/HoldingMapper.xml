@@ -27,7 +27,7 @@
         FOR UPDATE
     </select>
 
-    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id" keyColumn="id">
         INSERT INTO holdings (account_id, stock_code, quantity, avg_price, updated_at)
         VALUES (#{accountId}, #{stockCode}, #{quantity}, #{avgPrice}, #{updatedAt})
     </insert>

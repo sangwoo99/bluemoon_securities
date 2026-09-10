@@ -10,7 +10,7 @@
         <result column="created_at" property="createdAt"/>
     </resultMap>
 
-    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id" keyColumn="id">
         INSERT INTO users (email, password_hash, name, created_at)
         VALUES (#{email}, #{passwordHash}, #{name}, #{createdAt})
     </insert>

@@ -19,7 +19,7 @@
     </resultMap>
 
     <!-- ORDERS는 append-only. UPDATE/DELETE 매퍼 메서드를 추가하지 말 것 (CLAUDE.md 절대 규칙). -->
-    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id" keyColumn="id">
         INSERT INTO orders (account_id, stock_code, side, order_type, quantity, limit_price,
                             filled_price, filled_quantity, total_amount, status, cancel_of_order_id, ordered_at)
         VALUES (#{accountId}, #{stockCode}, #{side}, #{orderType}, #{quantity}, #{limitPrice},

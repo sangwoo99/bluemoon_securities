@@ -9,7 +9,7 @@
         <result column="pick_date" property="pickDate"/>
     </resultMap>
 
-    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id" keyColumn="id">
         INSERT INTO daily_picks (account_id, insight_id, pick_date)
         VALUES (#{accountId}, #{insightId}, #{pickDate})
     </insert>
