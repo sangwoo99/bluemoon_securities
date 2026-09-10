@@ -10,11 +10,11 @@
                                         |                                              |
                                 [Oracle Database]                              [Chroma 벡터 DB]
                                 (Autonomous DB, Always Free)                          |
+                                        |                                    [네이버 뉴스 검색 API]
+                                    [Redis]                                  (RAG용 근거 기사 수집)
+                              (시세 캐싱, 재고 락)                                      |
                                         |                                       [OpenAI API]
-                                    [Redis]
-                              (시세 캐싱, 재고 락)
-                                        |
-                              [한국투자증권 Open API]
+                              [한국투자증권 Open API]                          (임베딩 + 요약 생성)
                                  (모의투자, 시세 조회)
 ```
 
@@ -24,7 +24,7 @@
 | 백엔드 | Spring Boot 3.x, **Java 17**, **MyBatis**, Spring Security |
 | RAG 서비스 | Python 3.11+, FastAPI, LangChain, Chroma |
 | DB / 캐시 | **Oracle Database**(Free 23c), Redis |
-| 외부 연동 | 한국투자증권 KIS Developers (모의투자), OpenAI API |
+| 외부 연동 | 한국투자증권 KIS Developers (모의투자, 시세), 네이버 뉴스 검색 API (RAG 근거 자료 수집), OpenAI API (임베딩 + 요약) |
 | 인프라 | Docker Compose, Nginx, Vercel(FE) + 오라클 클라우드 Always Free(BE+RAG) |
 
 > **스택 전환 이력**: 채용 시장 분석 결과, 전통 금융권(계정계) 채용 수요에 맞춰 `Spring Data JPA + QueryDSL + PostgreSQL + Java 21` → `MyBatis + Oracle Database + Java 17`로 전환했습니다. 문서상 요구된 "Java 11"은 Spring Boot 3.x 최소 요구 버전(17)과 양립 불가능해 17로 조정했습니다 (자세한 트레이드오프는 `docs/PRD.md` PART 2 참고).
