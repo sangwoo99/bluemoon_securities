@@ -1,0 +1,25 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:bluemoon;MODE=Oracle;DB_CLOSE_DELAY=-1
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: ""
+  flyway:
+    enabled: false
+  sql:
+    init:
+      mode: always
+
+mybatis:
+  mapper-locations: classpath:mapper/*.xml
+  configuration:
+    map-underscore-to-camel-case: true
+
+app:
+  jwt:
+    secret: test-secret-test-secret-test-secret-test-secret
+    access-expiration-ms: 3600000
+    refresh-expiration-ms: 1209600000
+  seed-cash-balance: 10000000
+  rag-service:
+    base-url: http://localhost:8000

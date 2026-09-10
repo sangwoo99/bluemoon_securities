@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.bluemoon.backend.mapper.AccountSnapshotMapper">
+
+    <resultMap id="AccountSnapshotResultMap" type="com.bluemoon.backend.domain.snapshot.AccountSnapshot">
+        <id column="id" property="id"/>
+        <result column="account_id" property="accountId"/>
+        <result column="total_value" property="totalValue" javaType="java.math.BigDecimal"/>
+        <result column="snapshot_date" property="snapshotDate"/>
+    </resultMap>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO account_snapshots (account_id, total_value, snapshot_date)
+        VALUES (#{accountId}, #{totalValue}, #{snapshotDate})
+    </insert>
+
+    <select id="findByAccountIdAndSnapshotDateGreaterThanEqualOrderBySnapshotDateAsc" resultMap="AccountSnapshotResultMap">
+        SELECT id, account_id, total_value, snapshot_date
+        FROM account_snapshots
+        WHERE account_id = #{accountId}
+          AND snapshot_date >= #{from}
+        ORDER BY snapshot_date ASC
+    </select>
+
+</mapper>

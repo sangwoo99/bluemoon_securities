@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.bluemoon.backend.mapper.AiInsightMapper">
+
+    <resultMap id="AiInsightResultMap" type="com.bluemoon.backend.domain.insight.AiInsight">
+        <id column="id" property="id"/>
+        <result column="stock_code" property="stockCode"/>
+        <result column="content" property="content"/>
+        <result column="sources" property="sources"
+                typeHandler="com.bluemoon.backend.mapper.handler.InsightSourceListTypeHandler"/>
+        <result column="generated_at" property="generatedAt"/>
+    </resultMap>
+
+    <!-- 오직 배치(하루 1회)만 이 매퍼로 INSERT한다. 요청 경로(/api/insights/*)는 항상 조회만 한다 (CLAUDE.md 절대 규칙). -->
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO ai_insights (stock_code, content, sources, generated_at)
+        VALUES (#{stockCode}, #{content},
+                #{sources, typeHandler=com.bluemoon.backend.mapper.handler.InsightSourceListTypeHandler},
+                #{generatedAt})
+    </insert>
+
+    <select id="findById" resultMap="AiInsightResultMap">
+        SELECT id, stock_code, content, sources, generated_at
+        FROM ai_insights
+        WHERE id = #{id}
+    </select>
+
+    <select id="findFirstByStockCodeOrderByGeneratedAtDesc" resultMap="AiInsightResultMap">
+        SELECT id, stock_code, content, sources, generated_at
+        FROM ai_insights
+        WHERE stock_code = #{stockCode}
+        ORDER BY generated_at DESC
+        FETCH FIRST 1 ROWS ONLY
+    </select>
+
+</mapper>

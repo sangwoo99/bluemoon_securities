@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.bluemoon.backend.mapper.DailyPickMapper">
+
+    <resultMap id="DailyPickResultMap" type="com.bluemoon.backend.domain.insight.DailyPick">
+        <id column="id" property="id"/>
+        <result column="account_id" property="accountId"/>
+        <result column="insight_id" property="insightId"/>
+        <result column="pick_date" property="pickDate"/>
+    </resultMap>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO daily_picks (account_id, insight_id, pick_date)
+        VALUES (#{accountId}, #{insightId}, #{pickDate})
+    </insert>
+
+    <select id="findByAccountIdAndPickDate" resultMap="DailyPickResultMap">
+        SELECT id, account_id, insight_id, pick_date
+        FROM daily_picks
+        WHERE account_id = #{accountId}
+          AND pick_date = #{pickDate}
+    </select>
+
+</mapper>

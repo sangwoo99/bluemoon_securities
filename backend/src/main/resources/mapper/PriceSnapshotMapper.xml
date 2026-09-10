@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.bluemoon.backend.mapper.PriceSnapshotMapper">
+
+    <resultMap id="PriceSnapshotResultMap" type="com.bluemoon.backend.domain.snapshot.PriceSnapshot">
+        <id column="id" property="id"/>
+        <result column="stock_code" property="stockCode"/>
+        <result column="price" property="price" javaType="java.math.BigDecimal"/>
+        <result column="snapshot_date" property="snapshotDate"/>
+    </resultMap>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO price_snapshots (stock_code, price, snapshot_date)
+        VALUES (#{stockCode}, #{price}, #{snapshotDate})
+    </insert>
+
+    <select id="findByStockCodeAndSnapshotDateGreaterThanEqualOrderBySnapshotDateAsc" resultMap="PriceSnapshotResultMap">
+        SELECT id, stock_code, price, snapshot_date
+        FROM price_snapshots
+        WHERE stock_code = #{stockCode}
+          AND snapshot_date >= #{from}
+        ORDER BY snapshot_date ASC
+    </select>
+
+</mapper>

@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.bluemoon.backend.mapper.OrderMapper">
+
+    <resultMap id="OrderResultMap" type="com.bluemoon.backend.domain.order.Order">
+        <id column="id" property="id"/>
+        <result column="account_id" property="accountId"/>
+        <result column="stock_code" property="stockCode"/>
+        <result column="side" property="side"/>
+        <result column="order_type" property="orderType"/>
+        <result column="quantity" property="quantity"/>
+        <result column="limit_price" property="limitPrice" javaType="java.math.BigDecimal"/>
+        <result column="filled_price" property="filledPrice" javaType="java.math.BigDecimal"/>
+        <result column="filled_quantity" property="filledQuantity"/>
+        <result column="total_amount" property="totalAmount" javaType="java.math.BigDecimal"/>
+        <result column="status" property="status"/>
+        <result column="cancel_of_order_id" property="cancelOfOrderId"/>
+        <result column="ordered_at" property="orderedAt"/>
+    </resultMap>
+
+    <!-- ORDERS는 append-only. UPDATE/DELETE 매퍼 메서드를 추가하지 말 것 (CLAUDE.md 절대 규칙). -->
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO orders (account_id, stock_code, side, order_type, quantity, limit_price,
+                            filled_price, filled_quantity, total_amount, status, cancel_of_order_id, ordered_at)
+        VALUES (#{accountId}, #{stockCode}, #{side}, #{orderType}, #{quantity}, #{limitPrice},
+                #{filledPrice}, #{filledQuantity}, #{totalAmount}, #{status}, #{cancelOfOrderId}, #{orderedAt})
+    </insert>
+
+    <select id="findByAccountId" resultMap="OrderResultMap">
+        SELECT id, account_id, stock_code, side, order_type, quantity, limit_price,
+               filled_price, filled_quantity, total_amount, status, cancel_of_order_id, ordered_at
+        FROM orders
+        WHERE account_id = #{accountId}
+        ORDER BY ordered_at DESC
+        OFFSET #{offset} ROWS FETCH NEXT #{limit} ROWS ONLY
+    </select>
+
+    <select id="countByAccountId" resultType="long">
+        SELECT COUNT(*)
+        FROM orders
+        WHERE account_id = #{accountId}
+    </select>
+
+    <select id="findByAccountIdAndStockCode" resultMap="OrderResultMap">
+        SELECT id, account_id, stock_code, side, order_type, quantity, limit_price,
+               filled_price, filled_quantity, total_amount, status, cancel_of_order_id, ordered_at
+        FROM orders
+        WHERE account_id = #{accountId}
+          AND stock_code = #{stockCode}
+        ORDER BY ordered_at DESC
+        OFFSET #{offset} ROWS FETCH NEXT #{limit} ROWS ONLY
+    </select>
+
+    <select id="countByAccountIdAndStockCode" resultType="long">
+        SELECT COUNT(*)
+        FROM orders
+        WHERE account_id = #{accountId}
+          AND stock_code = #{stockCode}
+    </select>
+
+    <select id="findAllByAccountIdAndStockCode" resultMap="OrderResultMap">
+        SELECT id, account_id, stock_code, side, order_type, quantity, limit_price,
+               filled_price, filled_quantity, total_amount, status, cancel_of_order_id, ordered_at
+        FROM orders
+        WHERE account_id = #{accountId}
+          AND stock_code = #{stockCode}
+        ORDER BY ordered_at DESC
+    </select>
+
+</mapper>

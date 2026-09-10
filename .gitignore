@@ -1,0 +1,36 @@
+# frontend (Next.js)
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+frontend/.env.local
+frontend/*.tsbuildinfo
+
+# backend (Gradle / Java)
+backend/build/
+backend/.gradle/
+backend/out/
+backend/bin/
+*.class
+
+# rag-service (Python)
+rag-service/__pycache__/
+rag-service/**/__pycache__/
+rag-service/.venv/
+rag-service/venv/
+rag-service/chroma_db/
+rag-service/*.egg-info/
+
+# env files
+.env
+*.env.local
+!.env.example
+!**/.env.example
+
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# logs
+*.log

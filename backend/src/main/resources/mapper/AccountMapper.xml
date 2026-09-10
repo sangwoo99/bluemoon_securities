@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.bluemoon.backend.mapper.AccountMapper">
+
+    <resultMap id="AccountResultMap" type="com.bluemoon.backend.domain.account.Account">
+        <id column="id" property="id"/>
+        <result column="user_id" property="userId"/>
+        <result column="cash_balance" property="cashBalance" javaType="java.math.BigDecimal"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+    </resultMap>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO accounts (user_id, cash_balance, created_at, updated_at)
+        VALUES (#{userId}, #{cashBalance}, #{createdAt}, #{updatedAt})
+    </insert>
+
+    <select id="findByUserId" resultMap="AccountResultMap">
+        SELECT id, user_id, cash_balance, created_at, updated_at
+        FROM accounts
+        WHERE user_id = #{userId}
+    </select>
+
+    <!-- 락 획득 순서는 항상 ACCOUNTS -> HOLDINGS (CLAUDE.md 절대 규칙, 데드락 방지) -->
+    <select id="findByIdForUpdate" resultMap="AccountResultMap">
+        SELECT id, user_id, cash_balance, created_at, updated_at
+        FROM accounts
+        WHERE id = #{id}
+        FOR UPDATE
+    </select>
+
+    <select id="findAll" resultMap="AccountResultMap">
+        SELECT id, user_id, cash_balance, created_at, updated_at
+        FROM accounts
+    </select>
+
+    <update id="update">
+        UPDATE accounts
+        SET cash_balance = #{cashBalance},
+            updated_at    = #{updatedAt}
+        WHERE id = #{id}
+    </update>
+
+</mapper>

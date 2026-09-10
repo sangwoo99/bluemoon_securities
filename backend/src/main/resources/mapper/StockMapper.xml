@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.bluemoon.backend.mapper.StockMapper">
+
+    <resultMap id="StockResultMap" type="com.bluemoon.backend.domain.stock.Stock">
+        <id column="code" property="code"/>
+        <result column="name" property="name"/>
+        <result column="market" property="market"/>
+        <result column="current_price" property="currentPrice" javaType="java.math.BigDecimal"/>
+        <result column="prev_close" property="prevClose" javaType="java.math.BigDecimal"/>
+        <result column="updated_at" property="updatedAt"/>
+    </resultMap>
+
+    <insert id="insert">
+        INSERT INTO stocks (code, name, market, current_price, prev_close, updated_at)
+        VALUES (#{code}, #{name}, #{market}, #{currentPrice}, #{prevClose}, #{updatedAt})
+    </insert>
+
+    <select id="findByCode" resultMap="StockResultMap">
+        SELECT code, name, market, current_price, prev_close, updated_at
+        FROM stocks
+        WHERE code = #{code}
+    </select>
+
+    <select id="findAll" resultMap="StockResultMap">
+        SELECT code, name, market, current_price, prev_close, updated_at
+        FROM stocks
+    </select>
+
+    <select id="findAllByCodes" resultMap="StockResultMap">
+        SELECT code, name, market, current_price, prev_close, updated_at
+        FROM stocks
+        WHERE code IN
+        <foreach item="code" collection="codes" open="(" separator="," close=")">
+            #{code}
+        </foreach>
+    </select>
+
+    <update id="update">
+        UPDATE stocks
+        SET current_price = #{currentPrice},
+            prev_close    = #{prevClose},
+            updated_at    = #{updatedAt}
+        WHERE code = #{code}
+    </update>
+
+</mapper>

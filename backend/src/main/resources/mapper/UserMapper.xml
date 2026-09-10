@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.bluemoon.backend.mapper.UserMapper">
+
+    <resultMap id="UserResultMap" type="com.bluemoon.backend.domain.user.User">
+        <id column="id" property="id"/>
+        <result column="email" property="email"/>
+        <result column="password_hash" property="passwordHash"/>
+        <result column="name" property="name"/>
+        <result column="created_at" property="createdAt"/>
+    </resultMap>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO users (email, password_hash, name, created_at)
+        VALUES (#{email}, #{passwordHash}, #{name}, #{createdAt})
+    </insert>
+
+    <select id="findByEmail" resultMap="UserResultMap">
+        SELECT id, email, password_hash, name, created_at
+        FROM users
+        WHERE email = #{email}
+    </select>
+
+    <select id="existsByEmail" resultType="boolean">
+        SELECT CASE WHEN EXISTS (SELECT 1 FROM users WHERE email = #{email}) THEN 1 ELSE 0 END
+        FROM DUAL
+    </select>
+
+</mapper>
