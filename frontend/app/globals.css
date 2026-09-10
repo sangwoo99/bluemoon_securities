@@ -243,6 +243,16 @@ tr.clickable:hover { background: var(--surface-2); }
 .btn-buy { background: var(--up); color: #1a0808; }
 .btn-sell { background: var(--down); color: #08101f; }
 .btn-ghost { background: var(--surface-2); color: var(--text); border: 1px solid var(--border); }
+.btn-primary { background: var(--accent); color: #1a1206; }
+
+/* Auth (login/signup) */
+.auth-wrap { display: flex; align-items: center; justify-content: center; min-height: calc(100vh - 38px); padding: 40px 16px; }
+.auth-card { width: 100%; max-width: 360px; }
+.auth-tabs { display: flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; margin-bottom: 20px; }
+.auth-tab { flex: 1; text-align: center; padding: 10px; font-size: 13.5px; font-weight: 600; cursor: pointer; background: var(--surface); color: var(--text-dim); border: none; font-family: var(--font-inter), sans-serif; }
+.auth-tab.active { background: var(--accent-dim); color: var(--accent); }
+.sidebar-logout { background: none; border: none; color: var(--text-faint); font-family: var(--font-inter), sans-serif; font-size: 12px; cursor: pointer; padding: 0; text-align: left; }
+.sidebar-logout:hover { color: var(--text-dim); text-decoration: underline; }
 
 /* Trade form */
 .trade-tabs { display: flex; gap: 0; margin-bottom: 20px; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; width: fit-content; }

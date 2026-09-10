@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 
 const NAV_ITEMS = [
   { href: "/dashboard", icon: "◆", label: "대시보드" },
@@ -13,6 +13,13 @@ const NAV_ITEMS = [
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
+
+  function handleLogout() {
+    document.cookie = "accessToken=; path=/; max-age=0";
+    router.push("/login");
+    router.refresh();
+  }
 
   return (
     <aside className="sidebar">
@@ -32,7 +39,14 @@ export default function Sidebar() {
           );
         })}
       </nav>
-      <div className="sidebar-foot">모의투자 계좌</div>
+      <div className="sidebar-foot">
+        모의투자 계좌
+        <div style={{ marginTop: 6 }}>
+          <button type="button" className="sidebar-logout" onClick={handleLogout}>
+            로그아웃
+          </button>
+        </div>
+      </div>
     </aside>
   );
 }

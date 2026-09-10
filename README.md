@@ -143,22 +143,20 @@ uvicorn main:app --reload --port 8000
 ### 검증 완료
 
 - `docker compose up -d --build` 로 oracle/redis/rag-service/backend/nginx 전체 기동 확인 — `curl localhost:8080/actuator/health` → `{"status":"UP"}`
-- 과정에서 실제로 걸렸던 버그 2건 수정:
-  - `backend/Dockerfile`이 build/runtime 이미지로 `jdk21`을 쓰고 있어 `build.gradle`의 Java 17 toolchain과 불일치 → `jdk17-alpine` / `17-jre-alpine`으로 정정
-  - `db/migration/V1__init.sql`에서 컬럼 정의 순서가 `NOT NULL DEFAULT ...`로 되어 있어 Oracle이 거부(`ORA-03076`) → `DEFAULT ... NOT NULL` 순서로 정정 (Oracle은 DEFAULT가 인라인 제약조건보다 앞에 와야 함)
-- Flyway가 V1(스키마)·V2(종목 시드) 마이그레이션을 정상 적용하는 것까지 확인
+- `cd frontend && npm run build` 정상 통과, `npm run dev`로 로그인 → 대시보드 데이터 조회까지 end-to-end 확인
+- 프론트 로그인/회원가입 화면(`/login`) 구현 — 인증 없이 접근 시 자동으로 `/login`으로 리다이렉트, 로그아웃 버튼 포함
+- 과정에서 실제로 걸렸던 버그들 수정 — 상세 원인/해결은 [`TROUBLESHOOTING.md`](TROUBLESHOOTING.md) 참고 (Dockerfile JDK 버전 불일치, `V1__init.sql` 컬럼 정의 순서, Oracle+MyBatis `useGeneratedKeys` ROWID 문제, Next.js 16 `cookies()` 비동기 전환 등)
 
 ### 검증 필요 (이 환경에서 직접 빌드/실행하지 못함)
 
 - `cd backend && ./gradlew build` — 컴파일 에러·테스트(H2 Oracle 근사 모드) 통과 여부 확인
-- `cd frontend && npm install && npm run build` — 타입 에러 확인
 - `cd rag-service && pip install -r requirements.txt && pytest`
 - 실제 `OPENAI_API_KEY`/`NAVER_CLIENT_*` 키로 AI 인사이트 배치·RAG 파이프라인 end-to-end 확인
 
 ### 아직 안 한 것
 
 - **한국투자증권 Open API 연동**: 현재 `STOCKS.current_price`는 V2 마이그레이션의 고정 시드값. 실시간(폴링) 시세 갱신 배치·클라이언트 미구현
-- **프론트 로그인/회원가입 화면**: 백엔드 `/api/auth/signup`, `/api/auth/login`은 구현됐지만 프론트에는 화면이 없음 (현재는 쿠키의 `accessToken`을 직접 넣어야 인증 통과)
+- **`package.json`의 Next.js 버전 정리**: `"next": "^16.3.4"`로 실제 16이 설치되는데 문서(`docs/PRD.md` 등)는 "Next.js 14" 기준 — 버전을 14로 고정할지 문서를 16 기준으로 갱신할지 결정 필요 (`TROUBLESHOOTING.md` 7번 참고)
 - **주문 취소 기능**: DB 스키마(`cancel_of_order_id`)만 대비해두고 API/UI 미구현
 - **실제 배포**: Vercel(프론트), 오라클 클라우드 VM(백엔드+RAG), UptimeRobot 헬스체크 — 아직 로컬 스캐폴딩 단계
 - **OpenAI / 네이버 뉴스 API 키 발급 및 실제 테스트**: 코드는 있으나 실제 키로 RAG 파이프라인 end-to-end 검증 안 됨
