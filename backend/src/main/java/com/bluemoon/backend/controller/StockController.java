@@ -20,6 +20,11 @@ public class StockController {
     private final OrderService orderService;
     private final CurrentUserProvider currentUserProvider;
 
+    @GetMapping("/api/stocks")
+    public ApiResponse<List<StockResponse>> getAllStocks() {
+        return ApiResponse.ok(stockService.getAllStocks());
+    }
+
     @GetMapping("/api/stocks/{code}")
     public ApiResponse<StockResponse> getStock(@PathVariable String code) {
         return ApiResponse.ok(stockService.getStock(code));

@@ -109,6 +109,19 @@
 }
 ```
 
+### GET `/api/stocks`
+전체 종목 목록. 보유 여부와 무관하게 매수 화면의 종목 선택 드롭다운을 채우는 데 사용 (`/api/holdings`는 보유 종목만 반환하므로 신규 계정은 매수할 종목을 고를 수 없었음).
+
+**Response 200**
+```json
+{
+  "success": true,
+  "data": [
+    { "code": "005930", "name": "삼성전자", "market": "KOSPI", "currentPrice": 73800, "prevClose": 73000 }
+  ]
+}
+```
+
 ### GET `/api/stocks/{code}`
 **Response 200**
 ```json
@@ -279,6 +292,7 @@ Spring Boot가 Python RAG 서비스를 호출하는 내부 API (외부에 노출
 | `/api/portfolio/summary` | GET | ✓ | 대시보드 |
 | `/api/portfolio/trend` | GET | ✓ | 대시보드 |
 | `/api/holdings` | GET | ✓ | 대시보드, 보유종목 |
+| `/api/stocks` | GET | ✓ | 매수매도 |
 | `/api/stocks/{code}` | GET | ✓ | 종목상세, 매수매도 |
 | `/api/stocks/{code}/price-history` | GET | ✓ | 종목상세 |
 | `/api/trades/{code}` | GET | ✓ | 종목상세 |

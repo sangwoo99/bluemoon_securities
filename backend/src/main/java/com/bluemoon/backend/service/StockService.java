@@ -24,6 +24,15 @@ public class StockService {
     @Transactional(readOnly = true)
     public StockResponse getStock(String code) {
         Stock stock = findStock(code);
+        return toResponse(stock);
+    }
+
+    @Transactional(readOnly = true)
+    public List<StockResponse> getAllStocks() {
+        return stockMapper.findAll().stream().map(this::toResponse).toList();
+    }
+
+    private StockResponse toResponse(Stock stock) {
         return new StockResponse(stock.getCode(), stock.getName(), stock.getMarket(), stock.getCurrentPrice(), stock.getPrevClose());
     }
 

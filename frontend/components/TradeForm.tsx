@@ -5,9 +5,27 @@ import { useRouter } from "next/navigation";
 import ConfirmModal from "./ConfirmModal";
 import { apiPostClient } from "@/lib/api-client";
 import { ApiError } from "@/lib/api-error";
-import type { CreateOrderRequest, CreateOrderResponse, Holding, OrderSide, OrderType } from "@/lib/types";
+import type { CreateOrderRequest, CreateOrderResponse, Holding, OrderSide, OrderType, StockDetail } from "@/lib/types";
 
-export default function TradeForm({ holdings, initialCode, initialSide }: { holdings: Holding[]; initialCode: string; initialSide: OrderSide }) {
+interface TradableStock {
+  code: string;
+  name: string;
+  currentPrice: number;
+  quantity: number;
+  avgPrice: number;
+}
+
+export default function TradeForm({
+  allStocks,
+  holdings,
+  initialCode,
+  initialSide,
+}: {
+  allStocks: StockDetail[];
+  holdings: Holding[];
+  initialCode: string;
+  initialSide: OrderSide;
+}) {
   const router = useRouter();
   const [stockCode, setStockCode] = useState(initialCode);
   const [side, setSide] = useState<OrderSide>(initialSide);
@@ -18,7 +36,32 @@ export default function TradeForm({ holdings, initialCode, initialSide }: { hold
   const [submitting, setSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const selected = holdings.find((h) => h.stockCode === stockCode) ?? holdings[0];
+  const holdingsByCode = useMemo(() => new Map(holdings.map((h) => [h.stockCode, h])), [holdings]);
+
+  // 매수는 전체 종목 중에서, 매도는 실제 보유한 종목 중에서만 고를 수 있다.
+  const buyList: TradableStock[] = useMemo(
+    () =>
+      allStocks.map((s) => {
+        const h = holdingsByCode.get(s.code);
+        return { code: s.code, name: s.name, currentPrice: s.currentPrice, quantity: h?.quantity ?? 0, avgPrice: h?.avgPrice ?? 0 };
+      }),
+    [allStocks, holdingsByCode]
+  );
+  const sellList: TradableStock[] = useMemo(
+    () => holdings.map((h) => ({ code: h.stockCode, name: h.stockName, currentPrice: h.currentPrice, quantity: h.quantity, avgPrice: h.avgPrice })),
+    [holdings]
+  );
+  const list = side === "BUY" ? buyList : sellList;
+
+  function handleSideChange(nextSide: OrderSide) {
+    setSide(nextSide);
+    const nextList = nextSide === "BUY" ? buyList : sellList;
+    if (!nextList.some((s) => s.code === stockCode)) {
+      setStockCode(nextList[0]?.code ?? "");
+    }
+  }
+
+  const selected = list.find((s) => s.code === stockCode) ?? list[0];
 
   const qtyNum = parseInt(quantity, 10) || 0;
   const limitPriceNum = parseFloat(limitPrice) || 0;
@@ -42,7 +85,7 @@ export default function TradeForm({ holdings, initialCode, initialSide }: { hold
     setErrorMessage(null);
     try {
       const payload: CreateOrderRequest = {
-        stockCode: selected.stockCode,
+        stockCode: selected.code,
         side,
         orderType,
         quantity: qtyNum,
@@ -64,10 +107,10 @@ export default function TradeForm({ holdings, initialCode, initialSide }: { hold
       <div className="grid grid-2">
         <div className="card">
           <div className="trade-tabs">
-            <button className={`trade-tab${side === "BUY" ? " active-buy" : ""}`} onClick={() => setSide("BUY")} type="button">
+            <button className={`trade-tab${side === "BUY" ? " active-buy" : ""}`} onClick={() => handleSideChange("BUY")} type="button">
               매수
             </button>
-            <button className={`trade-tab${side === "SELL" ? " active-sell" : ""}`} onClick={() => setSide("SELL")} type="button">
+            <button className={`trade-tab${side === "SELL" ? " active-sell" : ""}`} onClick={() => handleSideChange("SELL")} type="button">
               매도
             </button>
           </div>
@@ -75,9 +118,9 @@ export default function TradeForm({ holdings, initialCode, initialSide }: { hold
           <div className="form-row">
             <label htmlFor="tradeStockSelect">종목</label>
             <select id="tradeStockSelect" value={stockCode} onChange={(e) => setStockCode(e.target.value)}>
-              {holdings.map((h) => (
-                <option key={h.stockCode} value={h.stockCode}>
-                  {h.stockName}
+              {list.map((s) => (
+                <option key={s.code} value={s.code}>
+                  {s.name}
                 </option>
               ))}
             </select>
@@ -134,7 +177,7 @@ export default function TradeForm({ holdings, initialCode, initialSide }: { hold
             <h3>선택 종목 정보</h3>
           </div>
           <div style={{ fontSize: 18, fontWeight: 600, marginBottom: 4 }}>
-            {selected.stockName} <span className="mono" style={{ fontSize: 12, color: "var(--text-faint)" }}>{selected.stockCode}</span>
+            {selected.name} <span className="mono" style={{ fontSize: 12, color: "var(--text-faint)" }}>{selected.code}</span>
           </div>
           <div className="mono" style={{ fontSize: 24, marginBottom: 14 }}>
             {selected.currentPrice.toLocaleString()}원
@@ -156,7 +199,7 @@ export default function TradeForm({ holdings, initialCode, initialSide }: { hold
 
       {showConfirm && (
         <ConfirmModal
-          stockName={selected.stockName}
+          stockName={selected.name}
           side={side}
           orderType={orderType}
           quantity={qtyNum}
