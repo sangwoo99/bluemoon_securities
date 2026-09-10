@@ -12,4 +12,9 @@ public class WebClientConfig {
     public WebClient ragServiceWebClient(@Value("${app.rag-service.base-url}") String baseUrl) {
         return WebClient.builder().baseUrl(baseUrl).build();
     }
+
+    @Bean
+    public WebClient kisWebClient(@Value("${app.kis.base-url}") String baseUrl) {
+        return WebClient.builder().baseUrl(baseUrl).build();
+    }
 }
