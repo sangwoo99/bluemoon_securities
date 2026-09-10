@@ -22,8 +22,8 @@
     <insert id="insert" useGeneratedKeys="true" keyProperty="id" keyColumn="id">
         INSERT INTO orders (account_id, stock_code, side, order_type, quantity, limit_price,
                             filled_price, filled_quantity, total_amount, status, cancel_of_order_id, ordered_at)
-        VALUES (#{accountId}, #{stockCode}, #{side}, #{orderType}, #{quantity}, #{limitPrice},
-                #{filledPrice}, #{filledQuantity}, #{totalAmount}, #{status}, #{cancelOfOrderId}, #{orderedAt})
+        VALUES (#{accountId}, #{stockCode}, #{side}, #{orderType}, #{quantity}, #{limitPrice, jdbcType=DECIMAL},
+                #{filledPrice}, #{filledQuantity}, #{totalAmount}, #{status}, #{cancelOfOrderId, jdbcType=BIGINT}, #{orderedAt})
     </insert>
 
     <select id="findByAccountId" resultMap="OrderResultMap">

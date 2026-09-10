@@ -136,6 +136,7 @@ uvicorn main:app --reload --port 8000
 - **docs/**: PRD·스토리보드·API 명세 이전, `db-schema.md` 신규 작성(ERD, 락 전략, 배치 요약)
 - **frontend**: Next.js 14 App Router로 5개 화면(대시보드/종목상세/매수매도/거래내역/보유종목) 전체 구현. 목업 디자인을 실제 컴포넌트로 포팅, `recharts` 차트, 로딩 스켈레톤·빈 상태·404 처리, 백엔드 API 연동(`{success,data,error}` 컨벤션)
 - **backend**: Spring Boot 3.3 / Java 17 / MyBatis. 도메인·매퍼(XML)·서비스·컨트롤러 전 계층 구현. `ACCOUNTS → HOLDINGS` 순서의 비관적 락(`SELECT ... FOR UPDATE`), `BigDecimal` 금액 계산, `ORDERS` append-only, JWT 인증, Flyway Oracle 마이그레이션(V1 스키마 + V2 종목 시드), 동시성 테스트 포함
+- **한국투자증권(KIS) 연동**: `KisClient`(OAuth 토큰 발급 + Redis 캐싱, 시세 조회) + `PriceUpdateBatchService`(평일 장중 10분 간격으로 `STOCKS.current_price` 갱신). 요청 경로가 아닌 배치에서만 호출, 시세 조회 엔드포인트만 사용(주문 API는 호출하지 않음 — 모의투자 계좌라도 안전하게)
 - **rag-service**: FastAPI + LangChain + Chroma. 네이버 뉴스 검색 → 임베딩 유사도 검색 → gpt-4o-mini 요약, "매수/매도 추천 금지" 프롬프트 제약, Spring Boot 배치 전용 내부 엔드포인트
 - **인프라**: `docker-compose.yml`(oracle/redis/backend/rag-service/nginx), `.env.example`, 루트 `CLAUDE.md`
 - **스택 전환**: JPA+QueryDSL+PostgreSQL+Java21 → MyBatis+Oracle+Java17 (전통 금융권 채용 시장 대응, `docs/PRD.md` PART 2 참고). 리포지토리 8개 전부 매퍼(인터페이스+XML)로 재작성, 엔티티에서 JPA 어노테이션 제거, 페이징을 Spring Data `Page` 대신 count+list 수동 조합으로 변경.
@@ -145,7 +146,9 @@ uvicorn main:app --reload --port 8000
 - `docker compose up -d --build` 로 oracle/redis/rag-service/backend/nginx 전체 기동 확인 — `curl localhost:8080/actuator/health` → `{"status":"UP"}`
 - `cd frontend && npm run build` 정상 통과, `npm run dev`로 로그인 → 대시보드 데이터 조회까지 end-to-end 확인
 - 프론트 로그인/회원가입 화면(`/login`) 구현 — 인증 없이 접근 시 자동으로 `/login`으로 리다이렉트, 로그아웃 버튼 포함
-- 과정에서 실제로 걸렸던 버그들 수정 — 상세 원인/해결은 [`TROUBLESHOOTING.md`](TROUBLESHOOTING.md) 참고 (Dockerfile JDK 버전 불일치, `V1__init.sql` 컬럼 정의 순서, Oracle+MyBatis `useGeneratedKeys` ROWID 문제, Next.js 16 `cookies()` 비동기 전환 등)
+- 과정에서 실제로 걸렸던 버그들 수정 — 상세 원인/해결은 [`TROUBLESHOOTING.md`](TROUBLESHOOTING.md) 참고 (Dockerfile JDK 버전 불일치, `V1__init.sql` 컬럼 정의 순서, Oracle+MyBatis `useGeneratedKeys` ROWID 문제, Next.js 16 `cookies()` 비동기 전환, KIS 초당 호출 제한, 신규 계정 첫 매수 불가 문제, nullable 컬럼 `jdbcType` 누락 등)
+- KIS 모의투자 앱키로 실제 토큰 발급 + 시세 조회 API 호출 성공 확인, 배치를 통해 5개 시드 종목 전부 실제 KIS 시세로 갱신되는 것까지 end-to-end 검증
+- 신규 계정 기준 전체 골든 패스 검증: 회원가입 → 로그인 → `/trade`에서 종목 선택(전체 종목 목록) → 시장가/지정가 매수 → 보유종목·포트폴리오 요약에 정확히 반영
 
 ### 검증 필요 (이 환경에서 직접 빌드/실행하지 못함)
 
@@ -155,7 +158,6 @@ uvicorn main:app --reload --port 8000
 
 ### 아직 안 한 것
 
-- **한국투자증권 Open API 연동**: 현재 `STOCKS.current_price`는 V2 마이그레이션의 고정 시드값. 실시간(폴링) 시세 갱신 배치·클라이언트 미구현
 - **`package.json`의 Next.js 버전 정리**: `"next": "^16.3.4"`로 실제 16이 설치되는데 문서(`docs/PRD.md` 등)는 "Next.js 14" 기준 — 버전을 14로 고정할지 문서를 16 기준으로 갱신할지 결정 필요 (`TROUBLESHOOTING.md` 7번 참고)
 - **주문 취소 기능**: DB 스키마(`cancel_of_order_id`)만 대비해두고 API/UI 미구현
 - **실제 배포**: Vercel(프론트), 오라클 클라우드 VM(백엔드+RAG), UptimeRobot 헬스체크 — 아직 로컬 스캐폴딩 단계
