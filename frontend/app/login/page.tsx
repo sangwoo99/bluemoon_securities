@@ -10,11 +10,15 @@ type Mode = "login" | "signup";
 
 const ACCESS_TOKEN_MAX_AGE_SECONDS = 60 * 60 * 24; // 쿠키 보관 기간(1일). 실제 만료는 JWT 자체 유효기간(서버 설정)을 따름.
 
+// 데모/면접관이 가입 없이 바로 둘러볼 수 있도록 테스트 계정을 기본값으로 채워둠.
+const DEMO_EMAIL = "demo@bluemoon.local";
+const DEMO_PASSWORD = "demo1234!";
+
 export default function LoginPage() {
   const router = useRouter();
   const [mode, setMode] = useState<Mode>("login");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [email, setEmail] = useState(DEMO_EMAIL);
+  const [password, setPassword] = useState(DEMO_PASSWORD);
   const [name, setName] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -22,6 +26,14 @@ export default function LoginPage() {
   function switchMode(next: Mode) {
     setMode(next);
     setErrorMessage(null);
+    if (next === "signup") {
+      setEmail("");
+      setPassword("");
+      setName("");
+    } else {
+      setEmail(DEMO_EMAIL);
+      setPassword(DEMO_PASSWORD);
+    }
   }
 
   async function handleSubmit(e: FormEvent) {
@@ -63,6 +75,12 @@ export default function LoginPage() {
             회원가입
           </button>
         </div>
+
+        {mode === "login" && (
+          <div style={{ fontSize: 11.5, color: "var(--text-faint)", marginBottom: 16, lineHeight: 1.6 }}>
+            테스트 계정이 미리 입력되어 있습니다. 바로 로그인 버튼을 눌러보세요.
+          </div>
+        )}
 
         <form onSubmit={handleSubmit}>
           {mode === "signup" && (
