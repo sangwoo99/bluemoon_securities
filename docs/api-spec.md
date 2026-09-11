@@ -218,7 +218,11 @@
   "success": true,
   "data": {
     "content": [
-      { "orderId": 45, "stockCode": "005930", "stockName": "삼성전자", "side": "BUY", "quantity": 10, "price": 73800, "orderedAt": "2026-08-27T10:02:00" }
+      {
+        "orderId": 45, "stockCode": "005930", "stockName": "삼성전자", "side": "BUY",
+        "quantity": 10, "price": 73800, "orderedAt": "2026-08-27T10:02:00",
+        "status": "FILLED", "cancelable": true
+      }
     ],
     "page": 0,
     "size": 20,
@@ -226,6 +230,25 @@
   }
 }
 ```
+> `status`가 `CANCELLED`인 행은 다른 주문을 취소하며 생긴 반대매매 레코드다. `cancelable`은 서버가 계산해 내려주는 값으로, `FILLED`이면서 아직 취소되지 않은 주문만 `true`.
+
+### DELETE `/api/orders/{orderId}`
+주문 취소. 이 시스템은 주문이 즉시 체결되므로 "취소"는 실제 행을 지우거나 고치는 게 아니라, 반대 방향 거래를 같은 체결가로 새로 추가해 현금/보유수량을 원상복구하는 것이다(`ORDERS`는 append-only, `docs/db-schema.md` ORDERS 절 참고).
+
+**Response 200**
+```json
+{
+  "success": true,
+  "data": { "cancellationOrderId": 46, "cashBalanceAfter": 9262000 }
+}
+```
+
+**에러 케이스**
+| 코드 | 상황 | HTTP |
+|---|---|---|
+| `ORDER_NOT_FOUND` | 존재하지 않거나 본인 계좌 소유가 아닌 주문 | 404 |
+| `ORDER_ALREADY_CANCELLED` | 이미 취소된 주문을 다시 취소 시도 | 400 |
+| `ORDER_NOT_CANCELABLE` | 취소 레코드 자체를 취소하려 하거나, 이미 팔아버려서/현금이 부족해 되돌릴 수 없는 경우 | 400 |
 
 ---
 
@@ -283,7 +306,42 @@ Spring Boot가 Python RAG 서비스를 호출하는 내부 API (외부에 노출
 
 ---
 
-## 7. 엔드포인트 요약표
+## 7. 마이페이지 / 관심종목
+
+### GET `/api/users/me`
+읽기 전용 프로필 조회
+
+**Response 200**
+```json
+{
+  "success": true,
+  "data": {
+    "email": "demo@bluemoon.local",
+    "name": "Demo",
+    "createdAt": "2026-09-10T14:03:59",
+    "cashBalance": 10000000,
+    "accountCreatedAt": "2026-09-10T14:03:59"
+  }
+}
+```
+
+### GET `/api/watchlist`
+내 관심종목 목록. `STOCKS`와 조인한 형태로 `/api/stocks` 응답과 동일한 구조.
+
+**Response 200**
+```json
+{ "success": true, "data": [{ "code": "035420", "name": "NAVER", "market": "KOSPI", "currentPrice": 208000, "prevClose": 208000 }] }
+```
+
+### POST `/api/watchlist/{code}`
+관심종목 추가 (이미 있으면 no-op). **Response 201**, `data: null`
+
+### DELETE `/api/watchlist/{code}`
+관심종목 제거 (없어도 성공). **Response 200**, `data: null`
+
+---
+
+## 8. 엔드포인트 요약표
 
 | 엔드포인트 | 메서드 | 인증 | 화면 |
 |---|---|---|---|
@@ -298,5 +356,9 @@ Spring Boot가 Python RAG 서비스를 호출하는 내부 API (외부에 노출
 | `/api/trades/{code}` | GET | ✓ | 종목상세 |
 | `/api/orders` | POST | ✓ | 매수매도 |
 | `/api/orders` | GET | ✓ | 거래내역 |
+| `/api/orders/{orderId}` | DELETE | ✓ | 거래내역 |
 | `/api/insights/today` | GET | ✓ | 대시보드 |
 | `/api/insights/{code}` | GET | ✓ | 종목상세 |
+| `/api/users/me` | GET | ✓ | 마이페이지 |
+| `/api/watchlist` | GET | ✓ | 종목상세 |
+| `/api/watchlist/{code}` | POST / DELETE | ✓ | 종목상세 |

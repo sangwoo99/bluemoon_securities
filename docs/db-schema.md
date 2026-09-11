@@ -20,6 +20,8 @@ USERS 1───1 ACCOUNTS 1───N HOLDINGS N───1 STOCKS
                 │                              │
                 ├──N ACCOUNT_SNAPSHOTS         ├──N PRICE_SNAPSHOTS
                 │                              │
+                ├──N WATCHLISTS N──────────────┤
+                │                              │
                 └──N DAILY_PICKS N───1 AI_INSIGHTS N───1 STOCKS
 ```
 
@@ -36,6 +38,7 @@ USERS 1───1 ACCOUNTS 1───N HOLDINGS N───1 STOCKS
 | `ACCOUNT_SNAPSHOTS` | 계좌 총자산 일별 스냅샷 | 대시보드 (자산 변화 추이) |
 | `AI_INSIGHTS` | RAG 생성 인사이트 캐시 | 대시보드, 종목상세 |
 | `DAILY_PICKS` | 계좌별 "오늘의 추천 종목" 매핑 | 대시보드 |
+| `WATCHLISTS` | 계좌별 관심종목(즐겨찾기) | 종목상세 |
 
 ---
 
@@ -103,7 +106,7 @@ USERS 1───1 ACCOUNTS 1───N HOLDINGS N───1 STOCKS
 | cancel_of_order_id | NUMBER(19) | NULL, FK → ORDERS.id | 취소 레코드가 원 주문을 가리킴 |
 | ordered_at | TIMESTAMP | NOT NULL, DEFAULT SYSTIMESTAMP | |
 
-> **설계 의도**: append-only. UPDATE/DELETE 금지, 취소는 새 레코드를 추가하고 `cancel_of_order_id`로 원 주문을 참조 (현재 MVP 범위에서는 취소 기능 미구현, 스키마만 확장 대비).
+> **설계 의도**: append-only. UPDATE/DELETE 금지, 취소는 새 레코드를 추가하고 `cancel_of_order_id`로 원 주문을 참조. 이 시스템은 주문이 즉시 체결되므로 취소 = 원주문과 반대 방향 거래를 같은 체결가로 넣어 현금/보유수량을 원상복구하는 것 (`OrderService.cancelOrder`, `docs/api-spec.md` 4절 `DELETE /api/orders/{orderId}` 참고).
 > **인덱스**: `(account_id, ordered_at DESC)`, `(account_id, stock_code, ordered_at DESC)` — 거래내역/종목별 이력 조회용.
 
 ### PRICE_SNAPSHOTS
@@ -148,13 +151,23 @@ USERS 1───1 ACCOUNTS 1───N HOLDINGS N───1 STOCKS
 
 > **제약**: `UNIQUE(account_id, pick_date)`. "오늘의 추천 종목"(`GET /api/insights/today`)은 계좌별로 다를 수 있음 — 보유 종목 중 뉴스 언급 빈도가 가장 높은 종목을 배치가 선정해 이 테이블에 기록. `AI_INSIGHTS`를 JOIN해 응답.
 
+### WATCHLISTS
+| 컬럼 | 타입 | 제약 | 설명 |
+|---|---|---|---|
+| id | NUMBER(19) | PK, IDENTITY | |
+| account_id | NUMBER(19) | FK → ACCOUNTS.id, NOT NULL | |
+| stock_code | VARCHAR2(6) | FK → STOCKS.code, NOT NULL | |
+| created_at | TIMESTAMP | NOT NULL, DEFAULT SYSTIMESTAMP | |
+
+> **제약**: `UNIQUE(account_id, stock_code)`. 종목상세 화면의 ★ 토글로 추가/삭제. 조회 시 `STOCKS`와 배치 조회 후 애플리케이션에서 합치는 방식(`WatchlistService.getMyWatchlist`, `OrderService`의 기존 배치 패턴과 동일 — N+1 방지).
+
 ---
 
 ## 3. 관계 요약
 
 - `USERS 1 : 1 ACCOUNTS`
-- `ACCOUNTS 1 : N HOLDINGS / ORDERS / ACCOUNT_SNAPSHOTS / DAILY_PICKS`
-- `STOCKS 1 : N HOLDINGS / ORDERS / PRICE_SNAPSHOTS / AI_INSIGHTS`
+- `ACCOUNTS 1 : N HOLDINGS / ORDERS / ACCOUNT_SNAPSHOTS / DAILY_PICKS / WATCHLISTS`
+- `STOCKS 1 : N HOLDINGS / ORDERS / PRICE_SNAPSHOTS / AI_INSIGHTS / WATCHLISTS`
 - `AI_INSIGHTS 1 : N DAILY_PICKS`
 
 ---
@@ -205,5 +218,5 @@ MyBatis는 JPA와 달리 변경사항을 자동으로 모아 처리하지 않으
 - [x] Oracle DDL 스크립트 작성 (Flyway로 버전 관리 — `backend/src/main/resources/db/migration/V1__init.sql`)
 - [ ] Oracle Free(로컬 `gvenzl/oracle-free` 컨테이너)로 실제 스키마 생성 및 매퍼 동작 검증 (현재는 H2 Oracle 근사 모드로만 단위테스트 검증됨)
 - [ ] 각 테이블의 인덱스 최종 확정
-- [ ] `ORDERS` 취소 API/UI 구현 (`cancel_of_order_id` 스키마는 준비됨)
+- [x] `ORDERS` 취소 API/UI 구현 (`cancel_of_order_id` 스키마는 준비됨)
 - [ ] Oracle Cloud Autonomous Database(Always Free) 인스턴스 프로비저닝
