@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.bluemoon.backend.mapper.WatchlistMapper">
+
+    <resultMap id="WatchlistResultMap" type="com.bluemoon.backend.domain.watchlist.Watchlist">
+        <id column="id" property="id"/>
+        <result column="account_id" property="accountId"/>
+        <result column="stock_code" property="stockCode"/>
+        <result column="created_at" property="createdAt"/>
+    </resultMap>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id" keyColumn="id">
+        INSERT INTO watchlists (account_id, stock_code, created_at)
+        VALUES (#{accountId}, #{stockCode}, #{createdAt})
+    </insert>
+
+    <delete id="deleteByAccountIdAndStockCode">
+        DELETE FROM watchlists
+        WHERE account_id = #{accountId}
+          AND stock_code = #{stockCode}
+    </delete>
+
+    <select id="existsByAccountIdAndStockCode" resultType="boolean">
+        SELECT CASE WHEN EXISTS (
+            SELECT 1 FROM watchlists WHERE account_id = #{accountId} AND stock_code = #{stockCode}
+        ) THEN 1 ELSE 0 END
+        FROM DUAL
+    </select>
+
+    <select id="findStockCodesByAccountId" resultType="string">
+        SELECT stock_code
+        FROM watchlists
+        WHERE account_id = #{accountId}
+        ORDER BY created_at DESC
+    </select>
+
+</mapper>

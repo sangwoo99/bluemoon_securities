@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import StockPicker from "@/components/StockPicker";
+import StockPicker, { type StockPickerItem } from "@/components/StockPicker";
 import PriceChart from "@/components/PriceChart";
 import AiInsightCard from "@/components/AiInsightCard";
+import WatchlistToggleButton from "@/components/WatchlistToggleButton";
 import { apiGet, ApiError } from "@/lib/api";
 import { fmtPct } from "@/lib/format";
 import type { Holding, Insight, PricePoint, StockDetail, Trade } from "@/lib/types";
@@ -31,12 +32,20 @@ export default async function StockDetailPage({ params }: { params: Promise<{ co
   }
   if (!stock) notFound();
 
-  const [priceHistory, trades, insight, holdings] = await Promise.all([
+  const [priceHistory, trades, insight, holdings, watchlist] = await Promise.all([
     safeGet<PricePoint[]>(`/api/stocks/${code}/price-history?days=30`),
     safeGet<Trade[]>(`/api/trades/${code}`),
     safeGet<Insight>(`/api/insights/${code}`),
     safeGet<Holding[]>("/api/holdings"),
+    safeGet<StockDetail[]>("/api/watchlist"),
   ]);
+
+  const isWatched = (watchlist ?? []).some((w) => w.code === code);
+
+  const pickerItems: StockPickerItem[] = [
+    ...(holdings ?? []).map((h) => ({ stockCode: h.stockCode, stockName: h.stockName })),
+    ...(watchlist ?? []).map((w) => ({ stockCode: w.code, stockName: w.name })),
+  ].filter((item, index, all) => all.findIndex((x) => x.stockCode === item.stockCode) === index);
 
   const diff = stock.currentPrice - stock.prevClose;
   const rate = stock.prevClose !== 0 ? (diff / stock.prevClose) * 100 : 0;
@@ -51,7 +60,7 @@ export default async function StockDetailPage({ params }: { params: Promise<{ co
         </div>
       </div>
 
-      <StockPicker holdings={holdings ?? []} activeCode={code} />
+      <StockPicker items={pickerItems} activeCode={code} />
 
       <div className="detail-head">
         <div>
@@ -64,6 +73,7 @@ export default async function StockDetailPage({ params }: { params: Promise<{ co
           </div>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
+          <WatchlistToggleButton code={code} initialWatched={isWatched} />
           <Link className="btn btn-buy" href={`/trade?code=${code}&side=BUY`}>
             매수
           </Link>
