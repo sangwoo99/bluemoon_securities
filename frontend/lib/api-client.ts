@@ -21,7 +21,20 @@ export async function apiPostClient<TRequest, TResponse>(path: string, payload: 
     body: JSON.stringify(payload),
   });
   const body: ApiResponse<TResponse> = await res.json();
-  if (!body.success || body.data === null) {
+  if (!body.success) {
+    throw new ApiError(body.error?.code ?? "UNKNOWN", body.error?.message ?? "요청에 실패했습니다.");
+  }
+  return body.data as TResponse;
+}
+
+export async function apiDeleteClient<TResponse>(path: string): Promise<TResponse | null> {
+  const token = readCookie("accessToken");
+  const res = await fetch(`${API_BASE_URL}${path}`, {
+    method: "DELETE",
+    headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+  });
+  const body: ApiResponse<TResponse> = await res.json();
+  if (!body.success) {
     throw new ApiError(body.error?.code ?? "UNKNOWN", body.error?.message ?? "요청에 실패했습니다.");
   }
   return body.data;

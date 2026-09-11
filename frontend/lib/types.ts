@@ -56,6 +56,8 @@ export interface Trade {
   orderedAt: string;
 }
 
+export type OrderStatus = "FILLED" | "CANCELLED";
+
 export interface OrderHistoryItem {
   orderId: number;
   stockCode: string;
@@ -64,6 +66,13 @@ export interface OrderHistoryItem {
   quantity: number;
   price: number;
   orderedAt: string;
+  status: OrderStatus;
+  cancelable: boolean;
+}
+
+export interface CancelOrderResponse {
+  cancellationOrderId: number;
+  cashBalanceAfter: number;
 }
 
 export interface Page<T> {
@@ -121,4 +130,12 @@ export interface LoginResponse {
 export interface SignupResponse {
   userId: number;
   accountId: number;
+}
+
+export interface UserProfile {
+  email: string;
+  name: string;
+  createdAt: string;
+  cashBalance: number;
+  accountCreatedAt: string;
 }

@@ -6,9 +6,11 @@ import com.bluemoon.backend.domain.account.Account;
 import com.bluemoon.backend.domain.holding.Holding;
 import com.bluemoon.backend.domain.order.Order;
 import com.bluemoon.backend.domain.order.OrderSide;
+import com.bluemoon.backend.domain.order.OrderStatus;
 import com.bluemoon.backend.domain.order.OrderType;
 import com.bluemoon.backend.domain.stock.Stock;
 import com.bluemoon.backend.dto.request.CreateOrderRequest;
+import com.bluemoon.backend.dto.response.CancelOrderResponse;
 import com.bluemoon.backend.dto.response.CreateOrderResponse;
 import com.bluemoon.backend.dto.response.OrderHistoryResponse;
 import com.bluemoon.backend.dto.response.PageResponse;
@@ -25,6 +27,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 
 /**
@@ -87,6 +90,53 @@ public class OrderService {
         return new CreateOrderResponse(order.getId(), filledPrice, request.quantity(), totalAmount, account.getCashBalance());
     }
 
+    /**
+     * 주문 취소 = 원주문과 반대 방향 거래를 같은 체결가로 넣어 현금/보유수량을 원상복구.
+     * 락 순서는 매수/매도와 동일하게 ACCOUNTS -> HOLDINGS로 고정 (CLAUDE.md 절대 규칙).
+     */
+    @Transactional
+    public CancelOrderResponse cancelOrder(Long userId, Long orderId) {
+        Account account = accountMapper.findByUserId(userId)
+                .orElseThrow(() -> new ApiException(ErrorCode.ACCOUNT_NOT_FOUND));
+        account = accountMapper.findByIdForUpdate(account.getId())
+                .orElseThrow(() -> new ApiException(ErrorCode.ACCOUNT_NOT_FOUND));
+
+        Order original = orderMapper.findByIdAndAccountId(orderId, account.getId())
+                .orElseThrow(() -> new ApiException(ErrorCode.ORDER_NOT_FOUND));
+
+        if (original.getCancelOfOrderId() != null) {
+            throw new ApiException(ErrorCode.ORDER_NOT_CANCELABLE);
+        }
+        boolean alreadyCancelled = !orderMapper.findCancelOfOrderIds(account.getId(), List.of(original.getId())).isEmpty();
+        if (original.getStatus() == OrderStatus.CANCELLED || alreadyCancelled) {
+            throw new ApiException(ErrorCode.ORDER_ALREADY_CANCELLED);
+        }
+
+        Holding holding = getOrCreateHoldingForUpdate(account.getId(), original.getStockCode());
+
+        if (original.getSide() == OrderSide.BUY) {
+            if (!holding.hasEnoughQuantity(original.getFilledQuantity())) {
+                throw new ApiException(ErrorCode.ORDER_NOT_CANCELABLE);
+            }
+            holding.applySell(original.getFilledQuantity());
+            account.credit(original.getTotalAmount());
+        } else {
+            if (!account.hasEnoughBalance(original.getTotalAmount())) {
+                throw new ApiException(ErrorCode.ORDER_NOT_CANCELABLE);
+            }
+            account.debit(original.getTotalAmount());
+            holding.applyBuy(original.getFilledQuantity(), original.getFilledPrice());
+        }
+
+        accountMapper.update(account);
+        holdingMapper.update(holding);
+
+        Order cancellation = Order.cancellationOf(original);
+        orderMapper.insert(cancellation);
+
+        return new CancelOrderResponse(cancellation.getId(), account.getCashBalance());
+    }
+
     private Holding getOrCreateHoldingForUpdate(Long accountId, String stockCode) {
         return holdingMapper.findByAccountIdAndStockCodeForUpdate(accountId, stockCode)
                 .orElseGet(() -> createHolding(accountId, stockCode));
@@ -124,10 +174,17 @@ public class OrderService {
                         .stream()
                         .collect(java.util.stream.Collectors.toMap(Stock::getCode, Function.identity()));
 
+        List<Long> orderIds = orders.stream().map(Order::getId).toList();
+        Set<Long> cancelledIds = orderIds.isEmpty()
+                ? Set.of()
+                : Set.copyOf(orderMapper.findCancelOfOrderIds(account.getId(), orderIds));
+
         List<OrderHistoryResponse> content = orders.stream()
                 .map(o -> new OrderHistoryResponse(
                         o.getId(), o.getStockCode(), stocksByCode.get(o.getStockCode()).getName(),
-                        o.getSide(), o.getFilledQuantity(), o.getFilledPrice(), o.getOrderedAt()
+                        o.getSide(), o.getFilledQuantity(), o.getFilledPrice(), o.getOrderedAt(),
+                        o.getStatus(),
+                        o.getStatus() == OrderStatus.FILLED && !cancelledIds.contains(o.getId())
                 ))
                 .toList();
 

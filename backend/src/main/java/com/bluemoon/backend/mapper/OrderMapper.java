@@ -5,6 +5,7 @@ import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
 import java.util.List;
+import java.util.Optional;
 
 @Mapper
 public interface OrderMapper {
@@ -21,4 +22,9 @@ public interface OrderMapper {
     long countByAccountIdAndStockCode(@Param("accountId") Long accountId, @Param("stockCode") String stockCode);
 
     List<Order> findAllByAccountIdAndStockCode(@Param("accountId") Long accountId, @Param("stockCode") String stockCode);
+
+    Optional<Order> findByIdAndAccountId(@Param("id") Long id, @Param("accountId") Long accountId);
+
+    /** 주어진 주문 id들 중 이미 취소 레코드가 존재하는(=cancel_of_order_id로 참조된) 원주문 id 집합. */
+    List<Long> findCancelOfOrderIds(@Param("accountId") Long accountId, @Param("orderIds") List<Long> orderIds);
 }

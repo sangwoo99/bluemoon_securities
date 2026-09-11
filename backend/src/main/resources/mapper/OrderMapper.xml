@@ -67,4 +67,22 @@
         ORDER BY ordered_at DESC
     </select>
 
+    <select id="findByIdAndAccountId" resultMap="OrderResultMap">
+        SELECT id, account_id, stock_code, side, order_type, quantity, limit_price,
+               filled_price, filled_quantity, total_amount, status, cancel_of_order_id, ordered_at
+        FROM orders
+        WHERE id = #{id}
+          AND account_id = #{accountId}
+    </select>
+
+    <select id="findCancelOfOrderIds" resultType="long">
+        SELECT cancel_of_order_id
+        FROM orders
+        WHERE account_id = #{accountId}
+          AND cancel_of_order_id IN
+        <foreach collection="orderIds" item="orderId" open="(" separator="," close=")">
+            #{orderId}
+        </foreach>
+    </select>
+
 </mapper>

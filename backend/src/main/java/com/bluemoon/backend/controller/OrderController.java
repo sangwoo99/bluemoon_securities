@@ -2,6 +2,7 @@ package com.bluemoon.backend.controller;
 
 import com.bluemoon.backend.common.ApiResponse;
 import com.bluemoon.backend.dto.request.CreateOrderRequest;
+import com.bluemoon.backend.dto.response.CancelOrderResponse;
 import com.bluemoon.backend.dto.response.CreateOrderResponse;
 import com.bluemoon.backend.dto.response.OrderHistoryResponse;
 import com.bluemoon.backend.dto.response.PageResponse;
@@ -33,5 +34,10 @@ public class OrderController {
             @RequestParam(defaultValue = "20") int size
     ) {
         return ApiResponse.ok(orderService.getOrderHistory(currentUserProvider.getUserId(), code, page, size));
+    }
+
+    @DeleteMapping("/{orderId}")
+    public ApiResponse<CancelOrderResponse> cancelOrder(@PathVariable Long orderId) {
+        return ApiResponse.ok(orderService.cancelOrder(currentUserProvider.getUserId(), orderId));
     }
 }

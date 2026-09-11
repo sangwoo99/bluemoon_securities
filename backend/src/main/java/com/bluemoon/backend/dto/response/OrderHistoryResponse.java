@@ -1,6 +1,7 @@
 package com.bluemoon.backend.dto.response;
 
 import com.bluemoon.backend.domain.order.OrderSide;
+import com.bluemoon.backend.domain.order.OrderStatus;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -12,6 +13,8 @@ public record OrderHistoryResponse(
         OrderSide side,
         Long quantity,
         BigDecimal price,
-        LocalDateTime orderedAt
+        LocalDateTime orderedAt,
+        OrderStatus status,
+        boolean cancelable
 ) {
 }

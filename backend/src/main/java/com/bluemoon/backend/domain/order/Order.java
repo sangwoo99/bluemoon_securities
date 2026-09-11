@@ -42,4 +42,25 @@ public class Order {
         order.orderedAt = LocalDateTime.now();
         return order;
     }
+
+    /**
+     * 주문 취소 = 원주문과 반대 방향의 거래를 같은 체결가로 넣어 현금/보유수량을 원상복구하는 새 레코드.
+     * 원주문 행은 건드리지 않는다(append-only) — 이 레코드가 cancelOfOrderId로 원주문을 참조한다.
+     */
+    public static Order cancellationOf(Order original) {
+        Order order = new Order();
+        order.accountId = original.accountId;
+        order.stockCode = original.stockCode;
+        order.side = original.side == OrderSide.BUY ? OrderSide.SELL : OrderSide.BUY;
+        order.orderType = original.orderType;
+        order.quantity = original.filledQuantity;
+        order.limitPrice = null;
+        order.filledPrice = original.filledPrice;
+        order.filledQuantity = original.filledQuantity;
+        order.totalAmount = original.totalAmount;
+        order.status = OrderStatus.CANCELLED;
+        order.cancelOfOrderId = original.id;
+        order.orderedAt = LocalDateTime.now();
+        return order;
+    }
 }

@@ -1,4 +1,5 @@
 import HistoryFilter from "@/components/HistoryFilter";
+import CancelOrderButton from "@/components/CancelOrderButton";
 import { apiGet } from "@/lib/api";
 import type { Holding, OrderHistoryItem, Page } from "@/lib/types";
 
@@ -49,6 +50,7 @@ export default async function HistoryPage({ searchParams }: { searchParams: Prom
                 <th>수량</th>
                 <th>체결가</th>
                 <th>금액</th>
+                <th>관리</th>
               </tr>
             </thead>
             <tbody>
@@ -56,10 +58,19 @@ export default async function HistoryPage({ searchParams }: { searchParams: Prom
                 <tr key={t.orderId}>
                   <td className="mono">{t.orderedAt.replace("T", " ").slice(0, 16)}</td>
                   <td style={{ textAlign: "left", fontFamily: "var(--font-inter)" }}>{t.stockName}</td>
-                  <td className={t.side === "BUY" ? "up" : "down"}>{t.side === "BUY" ? "매수" : "매도"}</td>
+                  <td className={t.side === "BUY" ? "up" : "down"}>
+                    {t.side === "BUY" ? "매수" : "매도"}
+                    {t.status === "CANCELLED" && (
+                      <span style={{ marginLeft: 5, fontSize: 10.5, color: "var(--text-faint)" }}>(취소)</span>
+                    )}
+                    {t.status === "FILLED" && !t.cancelable && (
+                      <span style={{ marginLeft: 5, fontSize: 10.5, color: "var(--text-faint)" }}>(취소됨)</span>
+                    )}
+                  </td>
                   <td>{t.quantity}</td>
                   <td>{t.price.toLocaleString()}</td>
                   <td>{(t.quantity * t.price).toLocaleString()}</td>
+                  <td>{t.cancelable && <CancelOrderButton orderId={t.orderId} stockName={t.stockName} />}</td>
                 </tr>
               ))}
             </tbody>
