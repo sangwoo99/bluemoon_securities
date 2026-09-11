@@ -118,7 +118,7 @@ nav { display: flex; flex-direction: column; gap: 2px; }
 .nav-icon { width: 16px; text-align: center; font-size: 14px; }
 .sidebar-foot { margin-top: auto; padding: 10px 8px; font-size: 11px; color: var(--text-faint); line-height: 1.5; }
 
-main { flex: 1; padding: 28px 34px; overflow-y: auto; max-width: 1180px; }
+main { flex: 1; padding: 28px 34px; overflow-y: auto; max-width: 1180px; margin: 0 auto; }
 
 .page-head { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 22px; flex-wrap: wrap; gap: 12px; }
 .page-head h1 { font-size: 22px; font-weight: 600; }

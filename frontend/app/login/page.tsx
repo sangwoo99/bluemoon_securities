@@ -8,7 +8,19 @@ import type { LoginRequest, LoginResponse, SignupRequest, SignupResponse } from 
 
 type Mode = "login" | "signup";
 
-const ACCESS_TOKEN_MAX_AGE_SECONDS = 60 * 60 * 24; // 쿠키 보관 기간(1일). 실제 만료는 JWT 자체 유효기간(서버 설정)을 따름.
+const FALLBACK_ACCESS_TOKEN_MAX_AGE_SECONDS = 60 * 60; // exp claim을 못 읽을 때의 안전값(백엔드 기본 access-expiration과 동일)
+
+/** 쿠키 수명을 JWT의 실제 exp에 맞춘다 — 하드코딩된 수명을 쓰면 쿠키는 남아있는데 토큰만 만료돼 데이터가 조용히 비어버림. */
+function accessTokenMaxAgeSeconds(token: string): number {
+  try {
+    const payload = token.split(".")[1];
+    const decoded = JSON.parse(atob(payload.replace(/-/g, "+").replace(/_/g, "/")));
+    const remaining = decoded.exp - Math.floor(Date.now() / 1000);
+    return remaining > 0 ? remaining : FALLBACK_ACCESS_TOKEN_MAX_AGE_SECONDS;
+  } catch {
+    return FALLBACK_ACCESS_TOKEN_MAX_AGE_SECONDS;
+  }
+}
 
 // 데모/면접관이 가입 없이 바로 둘러볼 수 있도록 테스트 계정을 기본값으로 채워둠.
 const DEMO_EMAIL = "demo@bluemoon.local";
@@ -45,7 +57,7 @@ export default function LoginPage() {
         await apiPostClient<SignupRequest, SignupResponse>("/api/auth/signup", { email, password, name });
       }
       const loginResult = await apiPostClient<LoginRequest, LoginResponse>("/api/auth/login", { email, password });
-      document.cookie = `accessToken=${loginResult.accessToken}; path=/; max-age=${ACCESS_TOKEN_MAX_AGE_SECONDS}`;
+      document.cookie = `accessToken=${loginResult.accessToken}; path=/; max-age=${accessTokenMaxAgeSeconds(loginResult.accessToken)}`;
       router.push("/dashboard");
       router.refresh();
     } catch (err) {
