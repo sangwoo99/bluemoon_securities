@@ -13,5 +13,7 @@ public interface UserMapper {
 
     Optional<User> findByEmail(@Param("email") String email);
 
+    Optional<User> findById(@Param("id") Long id);
+
     boolean existsByEmail(@Param("email") String email);
 }

@@ -21,6 +21,12 @@
         WHERE email = #{email}
     </select>
 
+    <select id="findById" resultMap="UserResultMap">
+        SELECT id, email, password_hash, name, created_at
+        FROM users
+        WHERE id = #{id}
+    </select>
+
     <select id="existsByEmail" resultType="boolean">
         SELECT CASE WHEN EXISTS (SELECT 1 FROM users WHERE email = #{email}) THEN 1 ELSE 0 END
         FROM DUAL
