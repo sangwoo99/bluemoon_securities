@@ -25,6 +25,11 @@ public class StockController {
         return ApiResponse.ok(stockService.getAllStocks());
     }
 
+    @GetMapping("/api/stocks/top-movers")
+    public ApiResponse<List<StockResponse>> getTopMovers() {
+        return ApiResponse.ok(stockService.getTopMovers());
+    }
+
     @GetMapping("/api/stocks/{code}")
     public ApiResponse<StockResponse> getStock(@PathVariable String code) {
         return ApiResponse.ok(stockService.getStock(code));

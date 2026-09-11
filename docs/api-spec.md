@@ -122,6 +122,20 @@
 }
 ```
 
+### GET `/api/stocks/top-movers`
+오늘의 상승률(등락률) TOP 10. `TOP_MOVERS` 캐시 테이블을 조회만 하고, KIS 호출은 `MarketRankingBatchService`(장중 10분 간격 + 앱 기동 시 1회)에서만 수행 — AI 인사이트와 동일하게 요청 경로에서 외부 API를 직접 호출하지 않는다.
+
+**Response 200**
+```json
+{
+  "success": true,
+  "data": [
+    { "code": "443670", "name": "에스피소프트", "market": "KOSDAQ", "currentPrice": 4725, "prevClose": 3634.89 }
+  ]
+}
+```
+> 순위에 새로 등장한 종목은 배치가 `STOCKS`에 자동으로 추가한다(find-or-create). `prevClose`는 KIS 순위 API가 전일종가를 직접 주지 않아 현재가와 등락률(%)로 역산한 값.
+
 ### GET `/api/stocks/{code}`
 **Response 200**
 ```json
@@ -351,6 +365,7 @@ Spring Boot가 Python RAG 서비스를 호출하는 내부 API (외부에 노출
 | `/api/portfolio/trend` | GET | ✓ | 대시보드 |
 | `/api/holdings` | GET | ✓ | 대시보드, 보유종목 |
 | `/api/stocks` | GET | ✓ | 매수매도 |
+| `/api/stocks/top-movers` | GET | ✓ | 종목목록 |
 | `/api/stocks/{code}` | GET | ✓ | 종목상세, 매수매도 |
 | `/api/stocks/{code}/price-history` | GET | ✓ | 종목상세 |
 | `/api/trades/{code}` | GET | ✓ | 종목상세 |

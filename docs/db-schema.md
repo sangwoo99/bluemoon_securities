@@ -23,6 +23,8 @@ USERS 1───1 ACCOUNTS 1───N HOLDINGS N───1 STOCKS
                 ├──N WATCHLISTS N──────────────┤
                 │                              │
                 └──N DAILY_PICKS N───1 AI_INSIGHTS N───1 STOCKS
+
+STOCKS 1───N TOP_MOVERS
 ```
 
 ## 1. 테이블 목록 및 역할
@@ -39,6 +41,7 @@ USERS 1───1 ACCOUNTS 1───N HOLDINGS N───1 STOCKS
 | `AI_INSIGHTS` | RAG 생성 인사이트 캐시 | 대시보드, 종목상세 |
 | `DAILY_PICKS` | 계좌별 "오늘의 추천 종목" 매핑 | 대시보드 |
 | `WATCHLISTS` | 계좌별 관심종목(즐겨찾기) | 종목상세 |
+| `TOP_MOVERS` | "오늘의 상승률 TOP 10" 캐시 | 종목목록 |
 
 ---
 
@@ -161,13 +164,24 @@ USERS 1───1 ACCOUNTS 1───N HOLDINGS N───1 STOCKS
 
 > **제약**: `UNIQUE(account_id, stock_code)`. 종목상세 화면의 ★ 토글로 추가/삭제. 조회 시 `STOCKS`와 배치 조회 후 애플리케이션에서 합치는 방식(`WatchlistService.getMyWatchlist`, `OrderService`의 기존 배치 패턴과 동일 — N+1 방지).
 
+### TOP_MOVERS
+| 컬럼 | 타입 | 제약 | 설명 |
+|---|---|---|---|
+| id | NUMBER(19) | PK, IDENTITY | |
+| stock_code | VARCHAR2(6) | FK → STOCKS.code, NOT NULL | |
+| rank_no | NUMBER(3) | NOT NULL | 1~10 |
+| change_rate | NUMBER(6,2) | NOT NULL | 전일대비 등락률(%) |
+| captured_at | TIMESTAMP | NOT NULL, DEFAULT SYSTIMESTAMP | |
+
+> **다른 테이블과 성격이 다름**: `ORDERS`/`WATCHLISTS`처럼 사용자 데이터를 쌓는 게 아니라 "지금 이 순간의 랭킹"을 보여주는 캐시라서, `MarketRankingBatchService`가 실행될 때마다 전체를 `DELETE` 후 다시 `INSERT`한다(append-only 규칙은 `ORDERS`에만 적용). KIS 등락률 순위(코스피/코스닥 각 상승률 상위)를 조회해 상위 10개를 저장하며, 순위에 새로 등장한 종목은 `STOCKS`에 find-or-create로 추가한다.
+
 ---
 
 ## 3. 관계 요약
 
 - `USERS 1 : 1 ACCOUNTS`
 - `ACCOUNTS 1 : N HOLDINGS / ORDERS / ACCOUNT_SNAPSHOTS / DAILY_PICKS / WATCHLISTS`
-- `STOCKS 1 : N HOLDINGS / ORDERS / PRICE_SNAPSHOTS / AI_INSIGHTS / WATCHLISTS`
+- `STOCKS 1 : N HOLDINGS / ORDERS / PRICE_SNAPSHOTS / AI_INSIGHTS / WATCHLISTS / TOP_MOVERS`
 - `AI_INSIGHTS 1 : N DAILY_PICKS`
 
 ---
@@ -209,7 +223,8 @@ MyBatis는 JPA와 달리 변경사항을 자동으로 모아 처리하지 않으
 
 | 배치 | 주기 | 대상 테이블 |
 |---|---|---|
-| 시세 갱신 | 장중 폴링 (수 분 간격, 미구현) | `STOCKS.current_price` |
+| 시세 갱신 | 평일 장중 10분 간격 | `STOCKS.current_price` |
+| 등락률 순위 갱신 | 평일 장중 10분 간격 + 앱 기동 시 1회 | `TOP_MOVERS`, (신규 종목 시) `STOCKS` |
 | 가격/자산 스냅샷 | 1일 1회 (장마감 후, 16:00 KST) | `PRICE_SNAPSHOTS`, `ACCOUNT_SNAPSHOTS` |
 | AI 인사이트 생성 | 1일 1회 (08:00 KST) | `AI_INSIGHTS`, `DAILY_PICKS` (Python RAG 서비스 호출) |
 

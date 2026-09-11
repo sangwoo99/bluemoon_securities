@@ -7,12 +7,18 @@ export const dynamic = "force-dynamic";
 
 export default async function StocksIndexPage() {
   let allStocks: StockDetail[] = [];
+  let topMovers: StockDetail[] = [];
   let holdings: Holding[] = [];
   let watchlist: StockDetail[] = [];
   try {
     allStocks = (await apiGet<StockDetail[]>("/api/stocks")) ?? [];
   } catch {
     allStocks = [];
+  }
+  try {
+    topMovers = (await apiGet<StockDetail[]>("/api/stocks/top-movers")) ?? [];
+  } catch {
+    topMovers = [];
   }
   try {
     holdings = (await apiGet<Holding[]>("/api/holdings")) ?? [];
@@ -28,16 +34,26 @@ export default async function StocksIndexPage() {
   const heldCodes = new Set(holdings.map((h) => h.stockCode));
   const watchedCodes = new Set(watchlist.map((w) => w.code));
 
+  // 오늘의 상승률 TOP 10을 우선 노출하고, 순위에 없어도 내 보유/관심 종목은 항상 함께 보여준다.
+  const allStocksByCode = new Map(allStocks.map((s) => [s.code, s]));
+  const topMoverCodes = new Set(topMovers.map((s) => s.code));
+  const alwaysShowExtras = [...heldCodes, ...watchedCodes]
+    .filter((code) => !topMoverCodes.has(code))
+    .filter((code, index, all) => all.indexOf(code) === index)
+    .map((code) => allStocksByCode.get(code))
+    .filter((s): s is StockDetail => !!s);
+  const displayStocks = [...topMovers, ...alwaysShowExtras];
+
   return (
     <section>
       <div className="page-head">
         <div>
           <h1>종목 목록</h1>
-          <p>종목을 선택하면 시세와 AI 인사이트를 확인할 수 있어요</p>
+          <p>오늘의 상승률 상위 종목과 내 보유·관심 종목을 확인하세요</p>
         </div>
       </div>
 
-      {allStocks.length > 0 ? (
+      {displayStocks.length > 0 ? (
         <div className="card">
           <table>
             <thead>
@@ -49,7 +65,7 @@ export default async function StocksIndexPage() {
               </tr>
             </thead>
             <tbody>
-              {allStocks.map((s) => {
+              {displayStocks.map((s) => {
                 const diff = s.currentPrice - s.prevClose;
                 const rate = s.prevClose !== 0 ? (diff / s.prevClose) * 100 : 0;
                 return (
