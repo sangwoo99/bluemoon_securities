@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import ConfirmModal from "./ConfirmModal";
+import SearchableSelect from "./SearchableSelect";
 import { apiPostClient } from "@/lib/api-client";
 import { ApiError } from "@/lib/api-error";
 import type { CreateOrderRequest, CreateOrderResponse, Holding, OrderSide, OrderType, StockDetail } from "@/lib/types";
@@ -117,13 +118,7 @@ export default function TradeForm({
 
           <div className="form-row">
             <label htmlFor="tradeStockSelect">종목</label>
-            <select id="tradeStockSelect" value={stockCode} onChange={(e) => setStockCode(e.target.value)}>
-              {list.map((s) => (
-                <option key={s.code} value={s.code}>
-                  {s.name}
-                </option>
-              ))}
-            </select>
+            <SearchableSelect id="tradeStockSelect" options={list} value={stockCode} onChange={setStockCode} />
           </div>
 
           <div className="form-row">
