@@ -5,7 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 
 const NAV_ITEMS = [
   { href: "/dashboard", icon: "◆", label: "대시보드" },
-  { href: "/stocks", icon: "▤", label: "종목 상세" },
+  { href: "/stocks", icon: "▤", label: "종목 목록" },
   { href: "/trade", icon: "⇄", label: "매수 / 매도" },
   { href: "/history", icon: "≡", label: "거래 내역" },
   { href: "/holdings", icon: "▦", label: "보유 종목" },

@@ -53,6 +53,10 @@ export default async function StockDetailPage({ params }: { params: Promise<{ co
 
   return (
     <section>
+      <Link href="/stocks" style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 12.5, color: "var(--text-dim)", marginBottom: 12 }}>
+        ← 목록으로
+      </Link>
+
       <div className="page-head">
         <div>
           <h1>종목 상세</h1>

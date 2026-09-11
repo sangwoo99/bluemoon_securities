@@ -32,7 +32,7 @@ export default async function StocksIndexPage() {
     <section>
       <div className="page-head">
         <div>
-          <h1>종목 상세</h1>
+          <h1>종목 목록</h1>
           <p>종목을 선택하면 시세와 AI 인사이트를 확인할 수 있어요</p>
         </div>
       </div>
