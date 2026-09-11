@@ -17,8 +17,8 @@ async function safeGet<T>(path: string): Promise<T | null> {
   }
 }
 
-export default async function StockDetailPage({ params }: { params: { code: string } }) {
-  const { code } = params;
+export default async function StockDetailPage({ params }: { params: Promise<{ code: string }> }) {
+  const { code } = await params;
 
   let stock: StockDetail | null;
   try {

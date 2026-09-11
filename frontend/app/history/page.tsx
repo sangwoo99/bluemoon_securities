@@ -4,9 +4,10 @@ import type { Holding, OrderHistoryItem, Page } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
-export default async function HistoryPage({ searchParams }: { searchParams: { code?: string; page?: string } }) {
-  const code = searchParams.code;
-  const pageNum = Number(searchParams.page ?? "0");
+export default async function HistoryPage({ searchParams }: { searchParams: Promise<{ code?: string; page?: string }> }) {
+  const resolvedSearchParams = await searchParams;
+  const code = resolvedSearchParams.code;
+  const pageNum = Number(resolvedSearchParams.page ?? "0");
 
   const query = new URLSearchParams({ page: String(pageNum), size: "20" });
   if (code) query.set("code", code);

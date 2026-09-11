@@ -17,8 +17,9 @@ async function safeGet<T>(path: string): Promise<T | null> {
   }
 }
 
-export default async function DashboardPage({ searchParams }: { searchParams: { period?: string } }) {
-  const period = (searchParams.period ?? "1M") as TrendPeriod;
+export default async function DashboardPage({ searchParams }: { searchParams: Promise<{ period?: string }> }) {
+  const resolvedSearchParams = await searchParams;
+  const period = (resolvedSearchParams.period ?? "1M") as TrendPeriod;
 
   const [summary, trend, holdings, insight] = await Promise.all([
     safeGet<PortfolioSummary>("/api/portfolio/summary"),

@@ -4,7 +4,8 @@ import type { Holding, OrderSide, StockDetail } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
-export default async function TradePage({ searchParams }: { searchParams: { code?: string; side?: string } }) {
+export default async function TradePage({ searchParams }: { searchParams: Promise<{ code?: string; side?: string }> }) {
+  const resolvedSearchParams = await searchParams;
   let allStocks: StockDetail[] = [];
   let holdings: Holding[] = [];
   try {
@@ -17,9 +18,9 @@ export default async function TradePage({ searchParams }: { searchParams: { code
     holdings = [];
   }
 
-  const initialSide: OrderSide = searchParams.side === "SELL" ? "SELL" : "BUY";
+  const initialSide: OrderSide = resolvedSearchParams.side === "SELL" ? "SELL" : "BUY";
   const candidateCodes = initialSide === "BUY" ? allStocks.map((s) => s.code) : holdings.map((h) => h.stockCode);
-  const initialCode = searchParams.code && candidateCodes.includes(searchParams.code) ? searchParams.code : candidateCodes[0] ?? "";
+  const initialCode = resolvedSearchParams.code && candidateCodes.includes(resolvedSearchParams.code) ? resolvedSearchParams.code : candidateCodes[0] ?? "";
 
   return (
     <section>
