@@ -1,0 +1,2 @@
+ALTER TABLE top_movers ADD rank_type VARCHAR2(12) DEFAULT 'FLUCTUATION' NOT NULL;
+ALTER TABLE top_movers ADD volume NUMBER(19);

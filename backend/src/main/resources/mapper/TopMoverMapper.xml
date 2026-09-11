@@ -5,23 +5,27 @@
     <resultMap id="TopMoverResultMap" type="com.bluemoon.backend.domain.stock.TopMover">
         <id column="id" property="id"/>
         <result column="stock_code" property="stockCode"/>
+        <result column="rank_type" property="rankType"/>
         <result column="rank_no" property="rankNo"/>
         <result column="change_rate" property="changeRate" javaType="java.math.BigDecimal"/>
+        <result column="volume" property="volume"/>
         <result column="captured_at" property="capturedAt"/>
     </resultMap>
 
     <insert id="insert" useGeneratedKeys="true" keyProperty="id" keyColumn="id">
-        INSERT INTO top_movers (stock_code, rank_no, change_rate, captured_at)
-        VALUES (#{stockCode}, #{rankNo}, #{changeRate}, #{capturedAt})
+        INSERT INTO top_movers (stock_code, rank_type, rank_no, change_rate, volume, captured_at)
+        VALUES (#{stockCode}, #{rankType}, #{rankNo}, #{changeRate}, #{volume, jdbcType=NUMERIC}, #{capturedAt})
     </insert>
 
-    <delete id="deleteAll">
+    <delete id="deleteByRankType">
         DELETE FROM top_movers
+        WHERE rank_type = #{rankType}
     </delete>
 
-    <select id="findStockCodesOrderByRank" resultType="string">
+    <select id="findStockCodesByRankTypeOrderByRank" resultType="string">
         SELECT stock_code
         FROM top_movers
+        WHERE rank_type = #{rankType}
         ORDER BY rank_no ASC
     </select>
 

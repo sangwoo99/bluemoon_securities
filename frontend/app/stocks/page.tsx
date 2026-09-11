@@ -1,11 +1,21 @@
 import Link from "next/link";
+import RankFilter from "@/components/RankFilter";
 import { apiGet } from "@/lib/api";
 import { fmtSignedWon, fmtPct, gainClass, gainArrow } from "@/lib/format";
 import type { Holding, StockDetail } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
-export default async function StocksIndexPage() {
+const RANK_TYPE_MAP: Record<string, string> = {
+  fluctuation: "FLUCTUATION",
+  volume: "VOLUME",
+};
+
+export default async function StocksIndexPage({ searchParams }: { searchParams: Promise<{ rank?: string }> }) {
+  const resolvedSearchParams = await searchParams;
+  const rank = resolvedSearchParams.rank === "volume" ? "volume" : "fluctuation";
+  const rankType = RANK_TYPE_MAP[rank];
+
   let allStocks: StockDetail[] = [];
   let topMovers: StockDetail[] = [];
   let holdings: Holding[] = [];
@@ -16,7 +26,7 @@ export default async function StocksIndexPage() {
     allStocks = [];
   }
   try {
-    topMovers = (await apiGet<StockDetail[]>("/api/stocks/top-movers")) ?? [];
+    topMovers = (await apiGet<StockDetail[]>(`/api/stocks/top-movers?type=${rankType}`)) ?? [];
   } catch {
     topMovers = [];
   }
@@ -34,7 +44,7 @@ export default async function StocksIndexPage() {
   const heldCodes = new Set(holdings.map((h) => h.stockCode));
   const watchedCodes = new Set(watchlist.map((w) => w.code));
 
-  // 오늘의 상승률 TOP 10을 우선 노출하고, 순위에 없어도 내 보유/관심 종목은 항상 함께 보여준다.
+  // 선택한 순위(상승률/거래량) TOP 10을 우선 노출하고, 순위에 없어도 내 보유/관심 종목은 항상 함께 보여준다.
   const allStocksByCode = new Map(allStocks.map((s) => [s.code, s]));
   const topMoverCodes = new Set(topMovers.map((s) => s.code));
   const alwaysShowExtras = [...heldCodes, ...watchedCodes]
@@ -49,9 +59,11 @@ export default async function StocksIndexPage() {
       <div className="page-head">
         <div>
           <h1>종목 목록</h1>
-          <p>오늘의 상승률 상위 종목과 내 보유·관심 종목을 확인하세요</p>
+          <p>오늘의 상승률·거래량 상위 종목과 내 보유·관심 종목을 확인하세요</p>
         </div>
       </div>
+
+      <RankFilter current={rank} />
 
       {displayStocks.length > 0 ? (
         <div className="card">

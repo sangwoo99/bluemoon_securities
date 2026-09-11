@@ -122,8 +122,8 @@
 }
 ```
 
-### GET `/api/stocks/top-movers`
-오늘의 상승률(등락률) TOP 10. `TOP_MOVERS` 캐시 테이블을 조회만 하고, KIS 호출은 `MarketRankingBatchService`(장중 10분 간격 + 앱 기동 시 1회)에서만 수행 — AI 인사이트와 동일하게 요청 경로에서 외부 API를 직접 호출하지 않는다.
+### GET `/api/stocks/top-movers?type=FLUCTUATION`
+오늘의 랭킹 TOP 10. `type`: `FLUCTUATION`(등락률순, 기본값) / `VOLUME`(거래량순). `TOP_MOVERS` 캐시 테이블을 조회만 하고, KIS 호출은 `MarketRankingBatchService`(장중 10분 간격 + 앱 기동 시 1회)에서만 수행 — AI 인사이트와 동일하게 요청 경로에서 외부 API를 직접 호출하지 않는다.
 
 **Response 200**
 ```json
@@ -134,7 +134,7 @@
   ]
 }
 ```
-> 순위에 새로 등장한 종목은 배치가 `STOCKS`에 자동으로 추가한다(find-or-create). `prevClose`는 KIS 순위 API가 전일종가를 직접 주지 않아 현재가와 등락률(%)로 역산한 값.
+> 순위에 새로 등장한 종목은 배치가 `STOCKS`에 자동으로 추가한다(find-or-create). `prevClose`는 KIS 순위 API들이 전일종가를 직접 주지 않아 현재가와 등락률(%)로 역산한 값. `type`이 `FLUCTUATION`/`VOLUME` 외의 값이면 `VALIDATION_ERROR`(400).
 
 ### GET `/api/stocks/{code}`
 **Response 200**

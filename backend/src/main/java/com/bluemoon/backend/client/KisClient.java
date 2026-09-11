@@ -25,6 +25,7 @@ public class KisClient {
     private static final String TOKEN_CACHE_KEY = "kis:access_token";
     private static final String PRICE_TR_ID = "FHKST01010100";
     private static final String FLUCTUATION_RANK_TR_ID = "FHPST01700000";
+    private static final String VOLUME_RANK_TR_ID = "FHPST01710000";
 
     private final WebClient webClient;
     private final StringRedisTemplate redisTemplate;
@@ -137,6 +138,63 @@ public class KisClient {
         }
     }
 
+    /**
+     * 국내주식 거래량 순위를 조회한다. marketInputCode: "0001"(코스피) / "1001"(코스닥).
+     * 등락률 순위와 마찬가지로 모의투자 앱키로 직접 호출해 확인한 값. 시장을 지정하지 않고("0000") 호출하면
+     * 레버리지/인버스 ETF가 상위권을 휩쓸어, 개별 종목 위주로 보이도록 시장별 호출만 사용한다.
+     */
+    public List<VolumeRankItem> getTopVolumeStocks(String marketInputCode, int count) {
+        String token = getAccessToken();
+        if (token == null) {
+            return List.of();
+        }
+
+        try {
+            VolumeRankResponse response = webClient.get()
+                    .uri(uriBuilder -> uriBuilder
+                            .path("/uapi/domestic-stock/v1/quotations/volume-rank")
+                            .queryParam("fid_cond_mrkt_div_code", "J")
+                            .queryParam("fid_cond_scr_div_code", "20171")
+                            .queryParam("fid_input_iscd", marketInputCode)
+                            .queryParam("fid_div_cls_code", "0")
+                            .queryParam("fid_blng_cls_code", "0")
+                            .queryParam("fid_trgt_cls_code", "111111111")
+                            .queryParam("fid_trgt_exls_cls_code", "0000000000")
+                            .queryParam("fid_input_price_1", "")
+                            .queryParam("fid_input_price_2", "")
+                            .queryParam("fid_vol_cnt", "")
+                            .queryParam("fid_input_date_1", "")
+                            .build())
+                    .header("authorization", "Bearer " + token)
+                    .header("appkey", appKey)
+                    .header("appsecret", appSecret)
+                    .header("tr_id", VOLUME_RANK_TR_ID)
+                    .header("custtype", "P")
+                    .retrieve()
+                    .bodyToMono(VolumeRankResponse.class)
+                    .timeout(Duration.ofSeconds(10))
+                    .block();
+
+            if (response == null || response.output() == null || !"0".equals(response.rtCd())) {
+                log.warn("KIS 거래량 순위 조회 실패 — market={}, msg={}", marketInputCode, response != null ? response.msg1() : "응답 없음");
+                return List.of();
+            }
+            return response.output().stream()
+                    .limit(count)
+                    .map(o -> new VolumeRankItem(
+                            o.code(), o.name(), new BigDecimal(o.currentPrice()),
+                            new BigDecimal(o.changeRatePercent()), Long.parseLong(o.volume())
+                    ))
+                    .toList();
+        } catch (WebClientResponseException e) {
+            log.warn("KIS 거래량 순위 조회 중 오류 — market={}, status={}, body={}", marketInputCode, e.getStatusCode(), e.getResponseBodyAsString());
+            return List.of();
+        } catch (Exception e) {
+            log.warn("KIS 거래량 순위 조회 중 오류 — market={}, error={}", marketInputCode, e.getMessage());
+            return List.of();
+        }
+    }
+
     /** 접근토큰은 발급 API 자체가 분당 1회로 제한되어 있어 Redis에 캐싱해 재사용한다. */
     private synchronized String getAccessToken() {
         String cached = redisTemplate.opsForValue().get(TOKEN_CACHE_KEY);
@@ -207,6 +265,26 @@ public class KisClient {
             @JsonProperty("hts_kor_isnm") String name,
             @JsonProperty("stck_prpr") String currentPrice,
             @JsonProperty("prdy_ctrt") String changeRatePercent
+    ) {
+    }
+
+    public record VolumeRankItem(String code, String name, BigDecimal currentPrice, BigDecimal changeRatePercent, long volume) {
+    }
+
+    private record VolumeRankResponse(
+            @JsonProperty("rt_cd") String rtCd,
+            String msg1,
+            List<VolumeRankOutput> output
+    ) {
+    }
+
+    /** 거래량 순위는 종목코드 필드명이 등락률 순위와 다르다(mksc_shrn_iscd vs stck_shrn_iscd). */
+    private record VolumeRankOutput(
+            @JsonProperty("mksc_shrn_iscd") String code,
+            @JsonProperty("hts_kor_isnm") String name,
+            @JsonProperty("stck_prpr") String currentPrice,
+            @JsonProperty("prdy_ctrt") String changeRatePercent,
+            @JsonProperty("acml_vol") String volume
     ) {
     }
 }

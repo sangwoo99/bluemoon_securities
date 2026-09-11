@@ -2,6 +2,7 @@ package com.bluemoon.backend.service;
 
 import com.bluemoon.backend.common.exception.ApiException;
 import com.bluemoon.backend.common.exception.ErrorCode;
+import com.bluemoon.backend.domain.stock.RankType;
 import com.bluemoon.backend.domain.stock.Stock;
 import com.bluemoon.backend.dto.response.PricePointResponse;
 import com.bluemoon.backend.dto.response.StockResponse;
@@ -38,10 +39,17 @@ public class StockService {
         return stockMapper.findAll().stream().map(this::toResponse).toList();
     }
 
-    /** "오늘의 상승률 TOP 10" — top_movers 캐시만 조회한다(요청 경로에서 KIS를 직접 호출하지 않음). */
+    /** "오늘의 랭킹 TOP 10"(등락률/거래량) — top_movers 캐시만 조회한다(요청 경로에서 KIS를 직접 호출하지 않음). */
     @Transactional(readOnly = true)
-    public List<StockResponse> getTopMovers() {
-        List<String> codes = topMoverMapper.findStockCodesOrderByRank();
+    public List<StockResponse> getTopMovers(String rankType) {
+        RankType type;
+        try {
+            type = RankType.valueOf(rankType);
+        } catch (IllegalArgumentException e) {
+            throw new ApiException(ErrorCode.VALIDATION_ERROR, "type은 FLUCTUATION 또는 VOLUME이어야 합니다.");
+        }
+
+        List<String> codes = topMoverMapper.findStockCodesByRankTypeOrderByRank(type);
         if (codes.isEmpty()) {
             return List.of();
         }

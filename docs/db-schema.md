@@ -169,11 +169,13 @@ STOCKS 1───N TOP_MOVERS
 |---|---|---|---|
 | id | NUMBER(19) | PK, IDENTITY | |
 | stock_code | VARCHAR2(6) | FK → STOCKS.code, NOT NULL | |
+| rank_type | VARCHAR2(12) | NOT NULL | `FLUCTUATION`(등락률순) / `VOLUME`(거래량순) |
 | rank_no | NUMBER(3) | NOT NULL | 1~10 |
-| change_rate | NUMBER(6,2) | NOT NULL | 전일대비 등락률(%) |
+| change_rate | NUMBER(6,2) | NOT NULL | 전일대비 등락률(%) — 두 랭킹 타입 모두 채움 |
+| volume | NUMBER(19) | NULL | 누적거래량. `rank_type=VOLUME`일 때만 값 존재 |
 | captured_at | TIMESTAMP | NOT NULL, DEFAULT SYSTIMESTAMP | |
 
-> **다른 테이블과 성격이 다름**: `ORDERS`/`WATCHLISTS`처럼 사용자 데이터를 쌓는 게 아니라 "지금 이 순간의 랭킹"을 보여주는 캐시라서, `MarketRankingBatchService`가 실행될 때마다 전체를 `DELETE` 후 다시 `INSERT`한다(append-only 규칙은 `ORDERS`에만 적용). KIS 등락률 순위(코스피/코스닥 각 상승률 상위)를 조회해 상위 10개를 저장하며, 순위에 새로 등장한 종목은 `STOCKS`에 find-or-create로 추가한다.
+> **다른 테이블과 성격이 다름**: `ORDERS`/`WATCHLISTS`처럼 사용자 데이터를 쌓는 게 아니라 "지금 이 순간의 랭킹"을 보여주는 캐시라서, `MarketRankingBatchService`가 실행될 때마다 `rank_type`별로 해당 타입 행만 `DELETE` 후 다시 `INSERT`한다(append-only 규칙은 `ORDERS`에만 적용, 두 랭킹은 서로 독립 갱신). KIS 등락률 순위(`FHPST01700000`)/거래량 순위(`FHPST01710000`)를 코스피·코스닥 각각 조회해 타입별 상위 10개를 저장하며, 순위에 새로 등장한 종목은 `STOCKS`에 find-or-create로 추가한다.
 
 ---
 
@@ -224,7 +226,7 @@ MyBatis는 JPA와 달리 변경사항을 자동으로 모아 처리하지 않으
 | 배치 | 주기 | 대상 테이블 |
 |---|---|---|
 | 시세 갱신 | 평일 장중 10분 간격 | `STOCKS.current_price` |
-| 등락률 순위 갱신 | 평일 장중 10분 간격 + 앱 기동 시 1회 | `TOP_MOVERS`, (신규 종목 시) `STOCKS` |
+| 등락률·거래량 순위 갱신 | 평일 장중 10분 간격 + 앱 기동 시 1회 | `TOP_MOVERS`, (신규 종목 시) `STOCKS` |
 | 가격/자산 스냅샷 | 1일 1회 (장마감 후, 16:00 KST) | `PRICE_SNAPSHOTS`, `ACCOUNT_SNAPSHOTS` |
 | AI 인사이트 생성 | 1일 1회 (08:00 KST) | `AI_INSIGHTS`, `DAILY_PICKS` (Python RAG 서비스 호출) |
 

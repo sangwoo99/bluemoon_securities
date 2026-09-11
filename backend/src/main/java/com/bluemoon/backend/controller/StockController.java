@@ -26,8 +26,8 @@ public class StockController {
     }
 
     @GetMapping("/api/stocks/top-movers")
-    public ApiResponse<List<StockResponse>> getTopMovers() {
-        return ApiResponse.ok(stockService.getTopMovers());
+    public ApiResponse<List<StockResponse>> getTopMovers(@RequestParam(defaultValue = "FLUCTUATION") String type) {
+        return ApiResponse.ok(stockService.getTopMovers(type));
     }
 
     @GetMapping("/api/stocks/{code}")

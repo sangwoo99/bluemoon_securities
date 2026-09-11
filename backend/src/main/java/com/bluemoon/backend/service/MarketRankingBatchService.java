@@ -2,6 +2,8 @@ package com.bluemoon.backend.service;
 
 import com.bluemoon.backend.client.KisClient;
 import com.bluemoon.backend.client.KisClient.FluctuationRankItem;
+import com.bluemoon.backend.client.KisClient.VolumeRankItem;
+import com.bluemoon.backend.domain.stock.RankType;
 import com.bluemoon.backend.domain.stock.Stock;
 import com.bluemoon.backend.domain.stock.TopMover;
 import com.bluemoon.backend.mapper.StockMapper;
@@ -20,10 +22,11 @@ import java.util.List;
 import java.util.stream.Stream;
 
 /**
- * KIS 등락률 순위(상승률순)를 코스피/코스닥 각각 조회해 상위 10개를 top_movers에 캐싱하는 배치.
+ * KIS 등락률 순위 / 거래량 순위를 코스피·코스닥 각각 조회해 상위 10개씩 top_movers에 캐싱하는 배치.
  * PriceUpdateBatchService와 마찬가지로 요청 경로가 아닌 이 배치에서만 KIS를 호출한다.
  * 순위에 새로 등장한 종목은 STOCKS에 없을 수 있어 find-or-create로 반영한다.
- * top_movers는 ORDERS 같은 원장이 아니라 "지금 시점의 랭킹"을 보여주는 캐시라, 매 실행마다 비우고 다시 채운다.
+ * top_movers는 ORDERS 같은 원장이 아니라 "지금 시점의 랭킹"을 보여주는 캐시라, rankType별로 매 실행마다
+ * 비우고 다시 채운다 — 두 랭킹은 서로 독립적으로 갱신되므로 상대 rankType의 행은 건드리지 않는다.
  */
 @Slf4j
 @Service
@@ -31,7 +34,7 @@ import java.util.stream.Stream;
 public class MarketRankingBatchService {
 
     private static final int TOP_N = 10;
-    /** KIS 모의투자 계좌는 초당 호출 건수 제한이 있어(EGW00201) 코스피/코스닥 호출 사이에 간격을 둔다. */
+    /** KIS 모의투자 계좌는 초당 호출 건수 제한이 있어(EGW00201) 호출 사이에 간격을 둔다. */
     private static final long CALL_INTERVAL_MS = 1100;
 
     private final KisClient kisClient;
@@ -47,45 +50,77 @@ public class MarketRankingBatchService {
     /** 평일 장중(09~15시) 10분 간격 — 시세 갱신 배치와 동일 주기. */
     @Scheduled(cron = "0 */10 9-15 * * MON-FRI", zone = "Asia/Seoul")
     public void updateTopMovers() {
+        refreshFluctuationRanking();
+        sleep(CALL_INTERVAL_MS);
+        refreshVolumeRanking();
+    }
+
+    private void refreshFluctuationRanking() {
         List<FluctuationRankItem> kospi = kisClient.getTopFluctuationStocks("0001", TOP_N);
         sleep(CALL_INTERVAL_MS);
         List<FluctuationRankItem> kosdaq = kisClient.getTopFluctuationStocks("1001", TOP_N);
 
-        List<RankedStock> merged = Stream.concat(
-                        kospi.stream().map(item -> new RankedStock(item, "KOSPI")),
-                        kosdaq.stream().map(item -> new RankedStock(item, "KOSDAQ")))
-                .sorted(Comparator.comparing((RankedStock r) -> r.item().changeRatePercent()).reversed())
+        List<RankedFluctuation> merged = Stream.concat(
+                        kospi.stream().map(item -> new RankedFluctuation(item, "KOSPI")),
+                        kosdaq.stream().map(item -> new RankedFluctuation(item, "KOSDAQ")))
+                .sorted(Comparator.comparing((RankedFluctuation r) -> r.item().changeRatePercent()).reversed())
                 .limit(TOP_N)
                 .toList();
 
         if (merged.isEmpty()) {
-            log.warn("등락률 순위 조회 결과가 비어있어 top_movers 갱신을 건너뜀");
+            log.warn("등락률 순위 조회 결과가 비어있어 갱신을 건너뜀");
             return;
         }
 
-        merged.forEach(r -> upsertStock(r.item(), r.market()));
+        merged.forEach(r -> upsertStock(r.item().code(), r.item().name(), r.market(), r.item().currentPrice(), r.item().changeRatePercent()));
 
-        topMoverMapper.deleteAll();
+        topMoverMapper.deleteByRankType(RankType.FLUCTUATION);
         for (int i = 0; i < merged.size(); i++) {
-            RankedStock r = merged.get(i);
-            topMoverMapper.insert(new TopMover(r.item().code(), i + 1, r.item().changeRatePercent()));
+            RankedFluctuation r = merged.get(i);
+            topMoverMapper.insert(TopMover.fluctuation(r.item().code(), i + 1, r.item().changeRatePercent()));
         }
     }
 
-    private void upsertStock(FluctuationRankItem item, String market) {
-        stockMapper.findByCode(item.code()).ifPresentOrElse(
+    private void refreshVolumeRanking() {
+        List<VolumeRankItem> kospi = kisClient.getTopVolumeStocks("0001", TOP_N);
+        sleep(CALL_INTERVAL_MS);
+        List<VolumeRankItem> kosdaq = kisClient.getTopVolumeStocks("1001", TOP_N);
+
+        List<RankedVolume> merged = Stream.concat(
+                        kospi.stream().map(item -> new RankedVolume(item, "KOSPI")),
+                        kosdaq.stream().map(item -> new RankedVolume(item, "KOSDAQ")))
+                .sorted(Comparator.comparing((RankedVolume r) -> r.item().volume(), Comparator.reverseOrder()))
+                .limit(TOP_N)
+                .toList();
+
+        if (merged.isEmpty()) {
+            log.warn("거래량 순위 조회 결과가 비어있어 갱신을 건너뜀");
+            return;
+        }
+
+        merged.forEach(r -> upsertStock(r.item().code(), r.item().name(), r.market(), r.item().currentPrice(), r.item().changeRatePercent()));
+
+        topMoverMapper.deleteByRankType(RankType.VOLUME);
+        for (int i = 0; i < merged.size(); i++) {
+            RankedVolume r = merged.get(i);
+            topMoverMapper.insert(TopMover.volume(r.item().code(), i + 1, r.item().changeRatePercent(), r.item().volume()));
+        }
+    }
+
+    private void upsertStock(String code, String name, String market, BigDecimal currentPrice, BigDecimal changeRatePercent) {
+        stockMapper.findByCode(code).ifPresentOrElse(
                 stock -> {
-                    stock.updatePrice(item.currentPrice());
+                    stock.updatePrice(currentPrice);
                     stockMapper.update(stock);
                 },
-                () -> stockMapper.insert(Stock.seed(item.code(), item.name(), market, item.currentPrice(), estimatePrevClose(item)))
+                () -> stockMapper.insert(Stock.seed(code, name, market, currentPrice, estimatePrevClose(currentPrice, changeRatePercent)))
         );
     }
 
-    /** 순위 API는 전일종가를 직접 주지 않아, 현재가와 등락률(%)로 역산한다. */
-    private BigDecimal estimatePrevClose(FluctuationRankItem item) {
-        BigDecimal rate = item.changeRatePercent().divide(BigDecimal.valueOf(100), 6, RoundingMode.HALF_UP);
-        return item.currentPrice().divide(BigDecimal.ONE.add(rate), 2, RoundingMode.HALF_UP);
+    /** 순위 API들은 전일종가를 직접 주지 않아, 현재가와 등락률(%)로 역산한다. */
+    private BigDecimal estimatePrevClose(BigDecimal currentPrice, BigDecimal changeRatePercent) {
+        BigDecimal rate = changeRatePercent.divide(BigDecimal.valueOf(100), 6, RoundingMode.HALF_UP);
+        return currentPrice.divide(BigDecimal.ONE.add(rate), 2, RoundingMode.HALF_UP);
     }
 
     private void sleep(long millis) {
@@ -96,6 +131,9 @@ public class MarketRankingBatchService {
         }
     }
 
-    private record RankedStock(FluctuationRankItem item, String market) {
+    private record RankedFluctuation(FluctuationRankItem item, String market) {
+    }
+
+    private record RankedVolume(VolumeRankItem item, String market) {
     }
 }
