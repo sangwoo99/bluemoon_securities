@@ -46,7 +46,7 @@ export default function CancelOrderButton({ orderId, stockName }: { orderId: num
               <span>{stockName}</span>
             </div>
             <p style={{ fontSize: 12.5, color: "var(--text-dim)", marginTop: 12, lineHeight: 1.6 }}>
-              이 주문을 취소하면 반대매매 거래가 기록되어 현금/보유수량이 원래대로 복구됩니다.
+              아직 체결되지 않은 주문입니다. 취소하면 대기가 종료되며, 체결 전이라 현금/보유수량은 변동되지 않습니다.
             </p>
             {errorMessage && <div className="modal-error">{errorMessage}</div>}
             <div className="modal-actions">

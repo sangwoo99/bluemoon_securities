@@ -182,6 +182,11 @@
 
 ## 3. 매수 / 매도
 
+실제 증권사와 동일하게 **주문(접수)과 체결을 구분**한다.
+- **시장가**는 현재가로 즉시 체결.
+- **지정가**는 접수 시점에 이미 조건(매수: 현재가≤지정가, 매도: 현재가≥지정가)을 만족하면 실제 거래소처럼 즉시 체결되고, 그렇지 않으면 `PENDING`(체결 대기) 상태로 쌓여 시세가 바뀔 때마다(`OrderMatchingBatchService`) 재평가된다.
+- **취소는 체결 전(PENDING)에만 가능**하다. 이미 체결된 거래는 `ORDERS`가 append-only라 취소할 수 없다(`docs/db-schema.md` ORDERS/PENDING_ORDERS 절 참고).
+
 ### POST `/api/orders`
 **Request Body**
 ```json
@@ -195,36 +200,53 @@
 ```
 > `orderType`이 `LIMIT`이면 `limitPrice` 필수
 
-**Response 201**
+**Response 201 (즉시 체결된 경우 — 시장가, 또는 조건을 이미 만족한 지정가)**
 ```json
 {
   "success": true,
   "data": {
     "orderId": 45,
-    "filledPrice": 73800,
-    "filledQuantity": 10,
+    "status": "FILLED",
+    "price": 73800,
+    "quantity": 10,
     "totalAmount": 738000,
     "cashBalanceAfter": 9262000
   }
 }
 ```
 
+**Response 201 (조건 미충족 지정가 — 체결 대기로 접수)**
+```json
+{
+  "success": true,
+  "data": {
+    "orderId": 12,
+    "status": "PENDING",
+    "price": 70000,
+    "quantity": 10,
+    "totalAmount": 700000,
+    "cashBalanceAfter": 9262000
+  }
+}
+```
+> `status`가 `FILLED`면 `orderId`는 `ORDERS.id`, `PENDING`이면 `orderId`는 `PENDING_ORDERS.id`를 가리킨다. `price`는 체결가(FILLED) 또는 지정가(PENDING). `PENDING` 상태에서는 현금/보유수량이 아직 반영되지 않으므로 `cashBalanceAfter`는 접수 전과 동일하다.
+
 **에러 케이스**
 | 코드 | 상황 | HTTP |
 |---|---|---|
-| `INSUFFICIENT_BALANCE` | 매수 시 현금 잔고 부족 | 400 |
-| `INSUFFICIENT_HOLDING` | 매도 시 보유 수량 초과 | 400 |
+| `INSUFFICIENT_BALANCE` | 매수 시 가용 잔고 부족 (다른 대기 중인 매수 주문이 예약한 금액 포함) | 400 |
+| `INSUFFICIENT_HOLDING` | 매도 시 가용 보유 수량 초과 (다른 대기 중인 매도 주문이 예약한 수량 포함) | 400 |
 | `STOCK_NOT_FOUND` | 존재하지 않는 종목 | 404 |
 | `INVALID_ORDER_TYPE` | LIMIT인데 limitPrice 누락 | 400 |
 
-> **동시성 처리**: 이 엔드포인트는 `HOLDINGS.quantity`/`ACCOUNTS.cash_balance`를 갱신하므로, 서비스 레이어에서 비관적 락(`SELECT ... FOR UPDATE`) 또는 낙관적 락(버전 컬럼)으로 감싸야 함 — DB 스키마 문서의 동시성 이슈와 동일 지점
+> **동시성 처리**: 이 엔드포인트는 `HOLDINGS.quantity`/`ACCOUNTS.cash_balance`를 갱신하므로, 서비스 레이어에서 비관적 락(`SELECT ... FOR UPDATE`)으로 감싸야 함 — DB 스키마 문서의 동시성 이슈와 동일 지점. `PENDING` 접수는 이 두 값을 직접 바꾸지 않지만, 가용 잔고/수량 계산을 위해 `ACCOUNTS`는 동일하게 잠근다.
 
 ---
 
 ## 4. 거래 내역
 
 ### GET `/api/orders?code=&page=0&size=20`
-`code`는 선택 파라미터 (미지정 시 전체 종목)
+`code`는 선택 파라미터 (미지정 시 전체 종목). 체결 완료(`ORDERS`)와 체결 대기/취소(`PENDING_ORDERS`)를 시간순으로 합쳐서 내려준다.
 
 **Response 200**
 ```json
@@ -233,9 +255,14 @@
   "data": {
     "content": [
       {
+        "orderId": 12, "stockCode": "005930", "stockName": "삼성전자", "side": "BUY",
+        "quantity": 10, "price": 70000, "orderedAt": "2026-08-27T10:05:00",
+        "status": "PENDING", "cancelable": true
+      },
+      {
         "orderId": 45, "stockCode": "005930", "stockName": "삼성전자", "side": "BUY",
         "quantity": 10, "price": 73800, "orderedAt": "2026-08-27T10:02:00",
-        "status": "FILLED", "cancelable": true
+        "status": "FILLED", "cancelable": false
       }
     ],
     "page": 0,
@@ -244,25 +271,26 @@
   }
 }
 ```
-> `status`가 `CANCELLED`인 행은 다른 주문을 취소하며 생긴 반대매매 레코드다. `cancelable`은 서버가 계산해 내려주는 값으로, `FILLED`이면서 아직 취소되지 않은 주문만 `true`.
+> `status`는 `PENDING`(체결 대기) / `FILLED`(체결 완료) / `CANCELLED`(체결 전 취소) 중 하나. `cancelable`은 서버가 계산해 내려주며, `PENDING`인 행만 `true`. `FILLED` 행의 `orderId`는 `ORDERS.id`, `PENDING`/`CANCELLED` 행의 `orderId`는 `PENDING_ORDERS.id`다(이미 체결되어 `ORDERS`로 넘어간 `PENDING_ORDERS` 행은 중복 표시를 막기 위해 이 목록에서 제외된다).
 
 ### DELETE `/api/orders/{orderId}`
-주문 취소. 이 시스템은 주문이 즉시 체결되므로 "취소"는 실제 행을 지우거나 고치는 게 아니라, 반대 방향 거래를 같은 체결가로 새로 추가해 현금/보유수량을 원상복구하는 것이다(`ORDERS`는 append-only, `docs/db-schema.md` ORDERS 절 참고).
+체결 전(PENDING) 주문 취소. `orderId`는 `PENDING_ORDERS.id`를 가리킨다. 이미 체결된 거래는 취소할 수 없다.
 
 **Response 200**
 ```json
 {
   "success": true,
-  "data": { "cancellationOrderId": 46, "cashBalanceAfter": 9262000 }
+  "data": { "orderId": 12, "cashBalanceAfter": 9262000 }
 }
 ```
+> 체결 전이라 현금/보유수량을 원래부터 건드리지 않았으므로, 취소해도 `cashBalanceAfter`는 그대로다.
 
 **에러 케이스**
 | 코드 | 상황 | HTTP |
 |---|---|---|
 | `ORDER_NOT_FOUND` | 존재하지 않거나 본인 계좌 소유가 아닌 주문 | 404 |
 | `ORDER_ALREADY_CANCELLED` | 이미 취소된 주문을 다시 취소 시도 | 400 |
-| `ORDER_NOT_CANCELABLE` | 취소 레코드 자체를 취소하려 하거나, 이미 팔아버려서/현금이 부족해 되돌릴 수 없는 경우 | 400 |
+| `ORDER_NOT_CANCELABLE` | 이미 체결된(FILLED) 주문을 취소하려는 경우 | 400 |
 
 ---
 

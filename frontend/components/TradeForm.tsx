@@ -92,9 +92,9 @@ export default function TradeForm({
         quantity: qtyNum,
         limitPrice: orderType === "LIMIT" ? limitPriceNum : null,
       };
-      await apiPostClient<CreateOrderRequest, CreateOrderResponse>("/api/orders", payload);
+      const response = await apiPostClient<CreateOrderRequest, CreateOrderResponse>("/api/orders", payload);
       setShowConfirm(false);
-      router.push("/history");
+      router.push(`/history?justPlaced=${response.status}`);
       router.refresh();
     } catch (e) {
       setErrorMessage(e instanceof ApiError ? e.message : "주문 처리 중 오류가 발생했습니다.");
@@ -143,6 +143,11 @@ export default function TradeForm({
                 value={limitPrice}
                 onChange={(e) => setLimitPrice(e.target.value)}
               />
+              <div style={{ fontSize: 11.5, color: "var(--text-faint)", marginTop: 6 }}>
+                {side === "BUY"
+                  ? "현재가 이하로 내려와야 체결됩니다. 그 전까지는 주문 상태로 대기하며, 대기 중에는 언제든 취소할 수 있습니다."
+                  : "현재가 이상으로 올라야 체결됩니다. 그 전까지는 주문 상태로 대기하며, 대기 중에는 언제든 취소할 수 있습니다."}
+              </div>
             </div>
           )}
 

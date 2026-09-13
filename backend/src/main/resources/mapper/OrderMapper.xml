@@ -26,38 +26,6 @@
                 #{filledPrice}, #{filledQuantity}, #{totalAmount}, #{status}, #{cancelOfOrderId, jdbcType=BIGINT}, #{orderedAt})
     </insert>
 
-    <select id="findByAccountId" resultMap="OrderResultMap">
-        SELECT id, account_id, stock_code, side, order_type, quantity, limit_price,
-               filled_price, filled_quantity, total_amount, status, cancel_of_order_id, ordered_at
-        FROM orders
-        WHERE account_id = #{accountId}
-        ORDER BY ordered_at DESC
-        OFFSET #{offset} ROWS FETCH NEXT #{limit} ROWS ONLY
-    </select>
-
-    <select id="countByAccountId" resultType="long">
-        SELECT COUNT(*)
-        FROM orders
-        WHERE account_id = #{accountId}
-    </select>
-
-    <select id="findByAccountIdAndStockCode" resultMap="OrderResultMap">
-        SELECT id, account_id, stock_code, side, order_type, quantity, limit_price,
-               filled_price, filled_quantity, total_amount, status, cancel_of_order_id, ordered_at
-        FROM orders
-        WHERE account_id = #{accountId}
-          AND stock_code = #{stockCode}
-        ORDER BY ordered_at DESC
-        OFFSET #{offset} ROWS FETCH NEXT #{limit} ROWS ONLY
-    </select>
-
-    <select id="countByAccountIdAndStockCode" resultType="long">
-        SELECT COUNT(*)
-        FROM orders
-        WHERE account_id = #{accountId}
-          AND stock_code = #{stockCode}
-    </select>
-
     <select id="findAllByAccountIdAndStockCode" resultMap="OrderResultMap">
         SELECT id, account_id, stock_code, side, order_type, quantity, limit_price,
                filled_price, filled_quantity, total_amount, status, cancel_of_order_id, ordered_at
@@ -67,22 +35,12 @@
         ORDER BY ordered_at DESC
     </select>
 
-    <select id="findByIdAndAccountId" resultMap="OrderResultMap">
+    <select id="findAllByAccountId" resultMap="OrderResultMap">
         SELECT id, account_id, stock_code, side, order_type, quantity, limit_price,
                filled_price, filled_quantity, total_amount, status, cancel_of_order_id, ordered_at
         FROM orders
-        WHERE id = #{id}
-          AND account_id = #{accountId}
-    </select>
-
-    <select id="findCancelOfOrderIds" resultType="long">
-        SELECT cancel_of_order_id
-        FROM orders
         WHERE account_id = #{accountId}
-          AND cancel_of_order_id IN
-        <foreach collection="orderIds" item="orderId" open="(" separator="," close=")">
-            #{orderId}
-        </foreach>
+        ORDER BY ordered_at DESC
     </select>
 
 </mapper>

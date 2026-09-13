@@ -54,6 +54,21 @@ CREATE TABLE orders (
 CREATE INDEX idx_orders_account_ordered_at ON orders (account_id, ordered_at DESC);
 CREATE INDEX idx_orders_account_stock_ordered_at ON orders (account_id, stock_code, ordered_at DESC);
 
+CREATE TABLE pending_orders (
+    id               BIGINT         GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    account_id       BIGINT         NOT NULL REFERENCES accounts (id),
+    stock_code       VARCHAR(6)     NOT NULL REFERENCES stocks (code),
+    side             VARCHAR(4)     NOT NULL,
+    quantity         BIGINT         NOT NULL CHECK (quantity > 0),
+    limit_price      DECIMAL(18, 2) NOT NULL,
+    status           VARCHAR(10)    NOT NULL,
+    filled_order_id  BIGINT         REFERENCES orders (id),
+    ordered_at       TIMESTAMP      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    resolved_at      TIMESTAMP
+);
+CREATE INDEX idx_pending_orders_status_stock ON pending_orders (status, stock_code);
+CREATE INDEX idx_pending_orders_account_status ON pending_orders (account_id, status);
+
 CREATE TABLE price_snapshots (
     id             BIGINT         GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     stock_code     VARCHAR(6)     NOT NULL REFERENCES stocks (code),

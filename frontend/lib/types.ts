@@ -56,7 +56,7 @@ export interface Trade {
   orderedAt: string;
 }
 
-export type OrderStatus = "FILLED" | "CANCELLED";
+export type OrderStatus = "PENDING" | "FILLED" | "CANCELLED";
 
 export interface OrderHistoryItem {
   orderId: number;
@@ -71,7 +71,7 @@ export interface OrderHistoryItem {
 }
 
 export interface CancelOrderResponse {
-  cancellationOrderId: number;
+  orderId: number;
   cashBalanceAfter: number;
 }
 
@@ -92,8 +92,9 @@ export interface CreateOrderRequest {
 
 export interface CreateOrderResponse {
   orderId: number;
-  filledPrice: number;
-  filledQuantity: number;
+  status: OrderStatus;
+  price: number;
+  quantity: number;
   totalAmount: number;
   cashBalanceAfter: number;
 }

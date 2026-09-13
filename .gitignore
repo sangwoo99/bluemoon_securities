@@ -30,6 +30,9 @@ archive/rag-service/*.egg-info/
 # 배포용 Oracle Autonomous DB 지갑 (mTLS 방식 사용 시) — 절대 커밋하지 말 것
 secrets/
 
+# 로컬 테스트용으로 다운로드한 JDK (Gradle 실행용, 커밋 대상 아님)
+.tools/
+
 # IDE / OS
 .idea/
 .vscode/
