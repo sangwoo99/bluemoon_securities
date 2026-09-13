@@ -13,7 +13,7 @@ const RANK_TYPE_MAP: Record<string, string> = {
 
 export default async function StocksIndexPage({ searchParams }: { searchParams: Promise<{ rank?: string }> }) {
   const resolvedSearchParams = await searchParams;
-  const rank = resolvedSearchParams.rank === "volume" ? "volume" : "fluctuation";
+  const rank = resolvedSearchParams.rank === "volume" ? "volume" : resolvedSearchParams.rank === "all" ? "all" : "fluctuation";
   const rankType = RANK_TYPE_MAP[rank];
 
   let allStocks: StockDetail[] = [];
@@ -25,10 +25,12 @@ export default async function StocksIndexPage({ searchParams }: { searchParams: 
   } catch {
     allStocks = [];
   }
-  try {
-    topMovers = (await apiGet<StockDetail[]>(`/api/stocks/top-movers?type=${rankType}`)) ?? [];
-  } catch {
-    topMovers = [];
+  if (rankType) {
+    try {
+      topMovers = (await apiGet<StockDetail[]>(`/api/stocks/top-movers?type=${rankType}`)) ?? [];
+    } catch {
+      topMovers = [];
+    }
   }
   try {
     holdings = (await apiGet<Holding[]>("/api/holdings")) ?? [];
@@ -52,14 +54,15 @@ export default async function StocksIndexPage({ searchParams }: { searchParams: 
     .filter((code, index, all) => all.indexOf(code) === index)
     .map((code) => allStocksByCode.get(code))
     .filter((s): s is StockDetail => !!s);
-  const displayStocks = [...topMovers, ...alwaysShowExtras];
+  const displayStocks =
+    rank === "all" ? [...allStocks].sort((a, b) => a.name.localeCompare(b.name, "ko")) : [...topMovers, ...alwaysShowExtras];
 
   return (
     <section>
       <div className="page-head">
         <div>
           <h1>종목 목록</h1>
-          <p>오늘의 상승률·거래량 상위 종목과 내 보유·관심 종목을 확인하세요</p>
+          <p>오늘의 상승률·거래량 상위 종목, 전체 종목, 내 보유·관심 종목을 확인하세요</p>
         </div>
       </div>
 

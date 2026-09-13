@@ -57,7 +57,7 @@ public class InsightService {
     private InsightResponse toResponse(AiInsight insight) {
         Stock stock = stockMapper.findByCode(insight.getStockCode()).orElse(null);
         var sources = insight.getSources().stream()
-                .map(s -> new InsightResponse.InsightSourceResponse(s.name(), s.date()))
+                .map(s -> new InsightResponse.InsightSourceResponse(s.name(), s.date(), s.title(), s.url()))
                 .toList();
 
         return new InsightResponse(

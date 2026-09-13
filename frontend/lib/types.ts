@@ -101,6 +101,8 @@ export interface CreateOrderResponse {
 export interface InsightSource {
   name: string;
   date: string;
+  title?: string;
+  url?: string;
 }
 
 export interface Insight {

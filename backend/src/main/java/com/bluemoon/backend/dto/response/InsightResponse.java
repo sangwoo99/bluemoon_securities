@@ -10,6 +10,6 @@ public record InsightResponse(
         List<InsightSourceResponse> sources,
         LocalDateTime generatedAt
 ) {
-    public record InsightSourceResponse(String name, String date) {
+    public record InsightSourceResponse(String name, String date, String title, String url) {
     }
 }

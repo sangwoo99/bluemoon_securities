@@ -16,7 +16,7 @@ export default function AiInsightCard({
         <div className="card-head">
           <span className="ai-badge">✦ AI 인사이트</span>
         </div>
-        <p className="ai-reason">일시적으로 인사이트를 불러올 수 없습니다.</p>
+        <p className="ai-reason">최근 뉴스가 없어 인사이트를 불러올 수 없습니다.</p>
       </div>
     );
   }
@@ -43,13 +43,39 @@ export default function AiInsightCard({
 
       <p className="ai-reason">{insight.content}</p>
 
-      <div className="ai-sources">
-        {insight.sources.map((s, i) => (
-          <span className="source-tag" key={i}>
-            {s.name} · {s.date}
-          </span>
-        ))}
-      </div>
+      {insight.sources.some((s) => s.title) ? (
+        <div className="ai-news-list">
+          <span className="ai-news-label">참고 뉴스</span>
+          <ul>
+            {insight.sources.map((s, i) => (
+              <li key={i}>
+                {s.title ? (
+                  s.url ? (
+                    <a href={s.url} target="_blank" rel="noopener noreferrer">
+                      {s.title}
+                    </a>
+                  ) : (
+                    <span>{s.title}</span>
+                  )
+                ) : null}
+                <span className="ai-news-meta">
+                  {s.title ? " — " : ""}
+                  {s.name} · {s.date}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : (
+        <div className="ai-sources">
+          <span style={{ fontSize: 11, color: "var(--text-faint)", marginRight: 4 }}>참고 뉴스</span>
+          {insight.sources.map((s, i) => (
+            <span className="source-tag" key={i}>
+              {s.name} · {s.date}
+            </span>
+          ))}
+        </div>
+      )}
 
       <div className="ai-disclaimer">본 정보는 뉴스·공시 검색 기반 참고용 요약이며, 투자 판단과 책임은 본인에게 있습니다.</div>
     </div>

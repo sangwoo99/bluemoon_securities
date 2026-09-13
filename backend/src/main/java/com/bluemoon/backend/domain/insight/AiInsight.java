@@ -27,6 +27,6 @@ public class AiInsight {
         this.generatedAt = LocalDateTime.now();
     }
 
-    public record InsightSource(String name, String date) {
+    public record InsightSource(String name, String date, String title, String url) {
     }
 }

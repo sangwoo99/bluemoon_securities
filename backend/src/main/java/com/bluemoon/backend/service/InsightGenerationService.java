@@ -68,7 +68,7 @@ public class InsightGenerationService {
 
     private List<AiInsight.InsightSource> toSources(List<NewsDataClient.NewsArticle> articles) {
         return articles.stream()
-                .map(a -> new AiInsight.InsightSource(a.source(), a.date()))
+                .map(a -> new AiInsight.InsightSource(a.source(), a.date(), a.title(), a.url()))
                 .distinct()
                 .toList();
     }
