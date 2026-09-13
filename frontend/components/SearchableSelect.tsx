@@ -66,6 +66,7 @@ export default function SearchableSelect({
         type="text"
         placeholder={selected ? selected.name : "종목명 또는 코드 검색"}
         value={open ? query : ""}
+        style={{ paddingRight: 32, cursor: open ? "text" : "pointer" }}
         onChange={(e) => {
           setQuery(e.target.value);
           setOpen(true);
@@ -79,6 +80,24 @@ export default function SearchableSelect({
         onBlur={() => setTimeout(() => setOpen(false), 120)}
         onKeyDown={handleKeyDown}
       />
+      <span
+        aria-hidden
+        style={{
+          position: "absolute",
+          right: 13,
+          top: 0,
+          bottom: 0,
+          display: "flex",
+          alignItems: "center",
+          pointerEvents: "none",
+          color: "var(--text-faint)",
+          fontSize: 11,
+          transform: open ? "rotate(180deg)" : undefined,
+          transition: "transform 0.15s",
+        }}
+      >
+        ▾
+      </span>
       {!open && selected && (
         <div
           style={{

@@ -13,7 +13,7 @@ const RANK_TYPE_MAP: Record<string, string> = {
 
 export default async function StocksIndexPage({ searchParams }: { searchParams: Promise<{ rank?: string }> }) {
   const resolvedSearchParams = await searchParams;
-  const rank = resolvedSearchParams.rank === "volume" ? "volume" : resolvedSearchParams.rank === "all" ? "all" : "fluctuation";
+  const rank = resolvedSearchParams.rank === "volume" ? "volume" : resolvedSearchParams.rank === "fluctuation" ? "fluctuation" : "all";
   const rankType = RANK_TYPE_MAP[rank];
 
   let allStocks: StockDetail[] = [];
