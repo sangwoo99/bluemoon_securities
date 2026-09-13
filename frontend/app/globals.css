@@ -134,6 +134,8 @@ main { flex: 1; padding: 28px 34px; overflow-y: auto; max-width: 1180px; margin:
 }
 .card-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
 .card-head h3 { font-size: 13.5px; font-weight: 600; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.04em; }
+.card-link { font-size: 12px; color: var(--accent); text-decoration: none; white-space: nowrap; }
+.card-link:hover { text-decoration: underline; }
 
 /* Summary row */
 .summary-row { display: flex; gap: 16px; margin-bottom: 16px; flex-wrap: wrap; }
@@ -146,6 +148,12 @@ main { flex: 1; padding: 28px 34px; overflow-y: auto; max-width: 1180px; margin:
 .pill { font-size: 11px; padding: 2px 8px; border-radius: 20px; font-weight: 600; }
 .pill.up { background: var(--up-dim); color: var(--up); }
 .pill.down { background: var(--down-dim); color: var(--down); }
+.pill.pending { background: var(--accent-dim); color: var(--accent); }
+.pill.muted { background: var(--surface-2); color: var(--text-faint); }
+
+.notice-banner { font-size: 13px; padding: 12px 16px; border-radius: var(--radius); margin-bottom: 16px; }
+.notice-banner.pending { background: var(--accent-dim); color: var(--accent); border: 1px solid rgba(255, 183, 74, 0.35); }
+.notice-banner.filled { background: var(--up-dim); color: var(--up); border: 1px solid transparent; }
 
 /* AI insight card */
 .ai-card {
@@ -175,6 +183,8 @@ main { flex: 1; padding: 28px 34px; overflow-y: auto; max-width: 1180px; margin:
 }
 .ai-pick .name { font-size: 19px; font-weight: 600; }
 .ai-reason { font-size: 13.5px; color: var(--text-dim); line-height: 1.65; margin-bottom: 12px; }
+.ai-reason.clamp { display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
+.ai-detail-link { display: inline-block; margin: -4px 0 12px; }
 .ai-sources { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
 .source-tag {
   font-size: 11px;
@@ -216,6 +226,13 @@ tr.clickable:hover { background: var(--surface-2); }
 
 .chart-box { position: relative; height: 230px; }
 .chart-box.small { height: 200px; }
+.card.chart-fill { display: flex; flex-direction: column; }
+.card.chart-fill .chart-box { flex: 1 1 auto; min-height: 0; }
+.chart-x-labels { display: flex; justify-content: space-between; padding: 4px 8px 0 64px; font-size: 10px; color: var(--text-faint); }
+.chart-box.allocation { display: flex; align-items: center; justify-content: center; gap: 20px; }
+.allocation-legend { display: flex; flex-direction: column; gap: 8px; }
+.allocation-legend-item { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-dim); cursor: default; }
+.allocation-legend .dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
 
 /* Stock detail */
 .detail-head { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 18px; flex-wrap: wrap; gap: 12px; }

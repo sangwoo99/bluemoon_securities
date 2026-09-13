@@ -1,3 +1,4 @@
+import Link from "next/link";
 import SummaryCards from "@/components/SummaryCards";
 import AssetTrendChart from "@/components/AssetTrendChart";
 import AiInsightCard from "@/components/AiInsightCard";
@@ -8,6 +9,8 @@ import { apiGet } from "@/lib/api";
 import type { Holding, Insight, PortfolioSummary, TrendPeriod, TrendPoint } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
+
+const HOLDINGS_PREVIEW_COUNT = 3;
 
 async function safeGet<T>(path: string): Promise<T | null> {
   try {
@@ -35,7 +38,6 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
           <h1>대시보드</h1>
           <p>보유 자산 현황과 오늘의 AI 인사이트를 확인하세요</p>
         </div>
-        <PeriodSelect current={period} />
       </div>
 
       {summary ? (
@@ -45,9 +47,10 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       )}
 
       <div className="grid grid-2" style={{ marginBottom: 16 }}>
-        <div className="card">
+        <div className="card chart-fill">
           <div className="card-head">
             <h3>자산 변화 추이</h3>
+            <PeriodSelect current={period} />
           </div>
           <AssetTrendChart data={trend ?? []} />
         </div>
@@ -64,10 +67,13 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         <div className="card">
           <div className="card-head">
             <h3>보유 종목</h3>
+            <Link href="/holdings" className="card-link">
+              상세보기 →
+            </Link>
           </div>
-          <HoldingsTable holdings={holdings ?? []} variant="compact" />
+          <HoldingsTable holdings={(holdings ?? []).slice(0, HOLDINGS_PREVIEW_COUNT)} variant="compact" />
         </div>
-        <div className="card">
+        <div className="card chart-fill">
           <div className="card-head">
             <h3>자산 배분</h3>
           </div>

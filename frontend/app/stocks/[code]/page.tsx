@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import PriceChart from "@/components/PriceChart";
 import PeriodFilter from "@/components/PeriodFilter";
 import AiInsightCard from "@/components/AiInsightCard";
+import NewsSourcesCard from "@/components/NewsSourcesCard";
 import WatchlistToggleButton from "@/components/WatchlistToggleButton";
 import { apiGet, ApiError } from "@/lib/api";
 import { fmtPct } from "@/lib/format";
@@ -104,7 +105,11 @@ export default async function StockDetailPage({
           <PriceChart data={priceHistory ?? []} up={up} />
         </div>
 
-        <AiInsightCard insight={insight} />
+        <AiInsightCard insight={insight} showNews={false} />
+      </div>
+
+      <div style={{ marginBottom: 16 }}>
+        <NewsSourcesCard insight={insight} />
       </div>
 
       <div className="card">

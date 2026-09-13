@@ -6,11 +6,13 @@ export default function AiInsightCard({
   generatedAtLabel,
   linkStock = false,
   badgeLabel = "AI 인사이트",
+  showNews = true,
 }: {
   insight: Insight | null;
   generatedAtLabel?: string;
   linkStock?: boolean;
   badgeLabel?: string;
+  showNews?: boolean;
 }) {
   if (!insight) {
     return (
@@ -43,32 +45,15 @@ export default function AiInsightCard({
         </div>
       )}
 
-      <p className="ai-reason">{insight.content}</p>
+      <p className={linkStock ? "ai-reason clamp" : "ai-reason"}>{insight.content}</p>
 
-      {insight.sources.some((s) => s.title) ? (
-        <div className="ai-news-list">
-          <span className="ai-news-label">참고 뉴스</span>
-          <ul>
-            {insight.sources.map((s, i) => (
-              <li key={i}>
-                {s.title ? (
-                  s.url ? (
-                    <a href={s.url} target="_blank" rel="noopener noreferrer">
-                      {s.title}
-                    </a>
-                  ) : (
-                    <span>{s.title}</span>
-                  )
-                ) : null}
-                <span className="ai-news-meta">
-                  {s.title ? " — " : ""}
-                  {s.name} · {s.date}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      ) : (
+      {linkStock && insight.stockCode && (
+        <Link href={`/stocks/${insight.stockCode}`} className="card-link ai-detail-link">
+          자세히 보기 →
+        </Link>
+      )}
+
+      {showNews && (
         <div className="ai-sources">
           <span style={{ fontSize: 11, color: "var(--text-faint)", marginRight: 4 }}>참고 뉴스</span>
           {insight.sources.map((s, i) => (
