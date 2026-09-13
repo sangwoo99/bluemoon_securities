@@ -49,19 +49,10 @@ export default async function StocksIndexPage({ searchParams }: { searchParams: 
   const heldCodes = new Set(holdings.map((h) => h.stockCode));
   const watchedCodes = new Set(watchlist.map((w) => w.code));
 
-  // 선택한 순위(상승률/거래량) TOP 10을 우선 노출하고, 순위에 없어도 내 보유/관심 종목은 항상 함께 보여준다.
-  const allStocksByCode = new Map(allStocks.map((s) => [s.code, s]));
-  const topMoverCodes = new Set(topMovers.map((s) => s.code));
-  const alwaysShowExtras = [...heldCodes, ...watchedCodes]
-    .filter((code) => !topMoverCodes.has(code))
-    .filter((code, index, all) => all.indexOf(code) === index)
-    .map((code) => allStocksByCode.get(code))
-    .filter((s): s is StockDetail => !!s);
   const sortedAllStocks = [...allStocks].sort((a, b) => a.name.localeCompare(b.name, "ko"));
   const totalPages = Math.max(1, Math.ceil(sortedAllStocks.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
-  const displayStocks =
-    rank === "all" ? sortedAllStocks.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE) : [...topMovers, ...alwaysShowExtras];
+  const displayStocks = rank === "all" ? sortedAllStocks.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE) : topMovers;
 
   return (
     <section>
