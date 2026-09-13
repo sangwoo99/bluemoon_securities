@@ -146,16 +146,26 @@ cd backend
 - 과정에서 실제로 걸렸던 버그들 수정 — 상세 원인/해결은 [`TROUBLESHOOTING.md`](TROUBLESHOOTING.md) 참고 (Dockerfile JDK 버전 불일치, `V1__init.sql` 컬럼 정의 순서, Oracle+MyBatis `useGeneratedKeys` ROWID 문제, Next.js 16 `cookies()` 비동기 전환, KIS 초당 호출 제한, 신규 계정 첫 매수 불가 문제, nullable 컬럼 `jdbcType` 누락 등)
 - KIS 모의투자 앱키로 실제 토큰 발급 + 시세 조회 API 호출 성공 확인, 배치를 통해 5개 시드 종목 전부 실제 KIS 시세로 갱신되는 것까지 end-to-end 검증
 - 신규 계정 기준 전체 골든 패스 검증: 회원가입 → 로그인 → `/trade`에서 종목 선택(전체 종목 목록) → 시장가/지정가 매수 → 보유종목·포트폴리오 요약에 정확히 반영
+- 실제 `OPENAI_API_KEY`/`NEWSDATA_API_KEY` 키로 AI 인사이트 배치 end-to-end 확인 — 28개 종목 중 6개(삼성전자·NAVER·카카오·현대차·기아·삼성바이오로직스)에서 실제 뉴스 검색 → 요약 생성 → 종목상세 화면 노출까지 확인. 나머지는 해당 시점에 NewsData.io에 검색되는 한국어 기사가 없어 정상적으로 스킵됨(버그 아님)
 
 ### 검증 필요 (이 환경에서 직접 빌드/실행하지 못함)
 
 - `cd backend && ./gradlew build` — 컴파일 에러·테스트(H2 Oracle 근사 모드) 통과 여부 확인 (`NewsDataClient`/`OpenAiClient`/`InsightGenerationService` 추가분 포함)
-- 실제 `OPENAI_API_KEY`/`NEWSDATA_API_KEY` 키로 AI 인사이트 배치(뉴스 검색 → 요약) end-to-end 확인
 
 ### 아직 안 한 것
 
 - **`package.json`의 Next.js 버전 정리**: `"next": "^16.3.4"`로 실제 16이 설치되는데 문서(`docs/PRD.md` 등)는 "Next.js 14" 기준 — 버전을 14로 고정할지 문서를 16 기준으로 갱신할지 결정 필요 (`TROUBLESHOOTING.md` 7번 참고)
 - **주문 취소 기능**: DB 스키마(`cancel_of_order_id`)만 대비해두고 API/UI 미구현
 - **실제 배포**: Vercel(프론트), 오라클 클라우드 VM(백엔드), UptimeRobot 헬스체크 — 아직 로컬 스캐폴딩 단계
-- **OpenAI / NewsData.io 키 발급 및 실제 테스트**: 코드는 있으나 실제 키로 AI 인사이트 배치 end-to-end 검증 안 됨
 - **README 최상단 "성공 기준" 체크리스트**(`docs/PRD.md` 6장) 항목별 검증
+
+## 배치 스케줄
+
+| 배치 | 트리거 | 대상 |
+|---|---|---|
+| `MarketRankingBatchService` (등락률/거래량 순위) | 앱 기동 시 1회 + 평일 09~15시 10분 간격 | `TOP_MOVERS`, 신규 종목 시 `STOCKS` |
+| `PriceUpdateBatchService` (시세 갱신) | 평일 09~15시 10분 간격만 (기동 시 트리거 없음) | `STOCKS.current_price` |
+| `SnapshotBatchService` (자산/시세 스냅샷) | 매일 16:00 KST 1회 (장마감 후) | `PRICE_SNAPSHOTS`, `ACCOUNT_SNAPSHOTS` |
+| `InsightBatchService` (AI 인사이트) | 매일 08:00 KST 1회만 | `AI_INSIGHTS`, `DAILY_PICKS` |
+
+> 종목 목록(순위)은 재기동 시에만 도는 게 아니라 그 이후로도 평일 장중이면 10분마다 계속 갱신된다. 시세 갱신은 기동 트리거가 없어 평일 장중 첫 10분 주기가 돌기 전까지는 시드 값 그대로 보일 수 있다. AI 인사이트만 하루 딱 한 번(08:00 KST) 돈다.
