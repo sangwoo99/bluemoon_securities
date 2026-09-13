@@ -1,4 +1,4 @@
-# 블루문 — RAG 인사이트 기반 모의투자 포트폴리오 트래커
+# 블루문 — AI 인사이트 기반 모의투자 포트폴리오
 
 단순 CRUD를 넘어 금융 도메인 특유의 트랜잭션 무결성·동시성 처리와, AI 인사이트 파이프라인을 함께 다루는 포트폴리오 프로젝트입니다.
 
@@ -186,3 +186,16 @@ Autonomous DB 연결 문자열 만드는 방법(지갑 없는 TLS 방식 권장)
 | `InsightBatchService` (AI 인사이트) | 매일 08:00 KST 1회만 | `AI_INSIGHTS`, `DAILY_PICKS` |
 
 > 종목 목록(순위)은 재기동 시에만 도는 게 아니라 그 이후로도 평일 장중이면 10분마다 계속 갱신된다. 시세 갱신은 기동 트리거가 없어 평일 장중 첫 10분 주기가 돌기 전까지는 시드 값 그대로 보일 수 있다. AI 인사이트만 하루 딱 한 번(08:00 KST) 돈다.
+
+## 저사양 서버(1 OCPU/1GB) 대응
+
+오라클 클라우드 Always Free의 작은 VM(AMD 1 OCPU/1GB)에도 올라가도록 처음 설계와 다르게 바꾼 부분들:
+
+| 조치 | 내용 | 이유 |
+|---|---|---|
+| AI 인사이트를 별도 Python RAG 서비스에서 Spring Boot 내부로 통합 | FastAPI+LangChain+Chroma 프로세스 자체를 제거, `NewsDataClient`+`OpenAiClient`로 백엔드 안에서 직접 처리 | 별도 프로세스 하나(+그 프로세스의 파이썬 런타임 메모리)를 통째로 없앰 |
+| 벡터 검색(Chroma) 제거 | 뉴스 상위 5건을 그대로 컨텍스트로 사용, 임베딩 계산 없음 | 임베딩 생성/벡터 인덱싱은 메모리·CPU를 꽤 먹는데, 이 기능엔 과한 설계였음 |
+| 배포용 `docker-compose.prod.yml` 분리 | Oracle DB 컨테이너(`gvenzl/oracle-free`, 최소 1.5~2GB 필요) 제거, 대신 VM과 완전히 분리된 무료 리소스인 Oracle Cloud **Autonomous Database**에 연결 | DB를 VM 안에 같이 띄우면 1GB로는 시작 자체가 안 됨 |
+| 컨테이너별 `mem_limit` 설정 | `redis` 80MB / `backend` 550MB / `nginx` 32MB로 상한을 나눠 걸어둠 (합쳐도 1GB 안쪽) | 한 컨테이너가 메모리를 독차지해서 나머지가 OOM 나는 걸 방지 |
+| JVM 힙/GC 튜닝 | `JDK_JAVA_OPTIONS: -XX:MaxRAMPercentage=50.0 -XX:+UseSerialGC` | 힙을 컨테이너 메모리 제한(550MB)의 절반으로 제한하고, 멀티코어를 가정하는 G1/Parallel GC 대신 1 OCPU 환경에 맞는 SerialGC 사용 |
+| KIS 호출 사이 간격(`CALL_INTERVAL_MS`) | 배치들이 KIS를 연속 호출할 때 1.1초씩 대기 | 리소스보다는 호출 빈도 제한(EGW00201) 회피 목적이지만, 결과적으로 짧은 시간에 몰아치는 부하도 같이 완화됨 |
