@@ -11,10 +11,13 @@ const RANK_TYPE_MAP: Record<string, string> = {
   volume: "VOLUME",
 };
 
-export default async function StocksIndexPage({ searchParams }: { searchParams: Promise<{ rank?: string }> }) {
+const PAGE_SIZE = 10;
+
+export default async function StocksIndexPage({ searchParams }: { searchParams: Promise<{ rank?: string; page?: string }> }) {
   const resolvedSearchParams = await searchParams;
   const rank = resolvedSearchParams.rank === "volume" ? "volume" : resolvedSearchParams.rank === "fluctuation" ? "fluctuation" : "all";
   const rankType = RANK_TYPE_MAP[rank];
+  const page = Math.max(1, parseInt(resolvedSearchParams.page ?? "1", 10) || 1);
 
   let allStocks: StockDetail[] = [];
   let topMovers: StockDetail[] = [];
@@ -54,8 +57,11 @@ export default async function StocksIndexPage({ searchParams }: { searchParams: 
     .filter((code, index, all) => all.indexOf(code) === index)
     .map((code) => allStocksByCode.get(code))
     .filter((s): s is StockDetail => !!s);
+  const sortedAllStocks = [...allStocks].sort((a, b) => a.name.localeCompare(b.name, "ko"));
+  const totalPages = Math.max(1, Math.ceil(sortedAllStocks.length / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
   const displayStocks =
-    rank === "all" ? [...allStocks].sort((a, b) => a.name.localeCompare(b.name, "ko")) : [...topMovers, ...alwaysShowExtras];
+    rank === "all" ? sortedAllStocks.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE) : [...topMovers, ...alwaysShowExtras];
 
   return (
     <section>
@@ -105,6 +111,30 @@ export default async function StocksIndexPage({ searchParams }: { searchParams: 
               })}
             </tbody>
           </table>
+
+          {rank === "all" && totalPages > 1 && (
+            <div className="pagination">
+              <Link
+                href={`/stocks?rank=all&page=${Math.max(1, currentPage - 1)}`}
+                className={`chip${currentPage === 1 ? " disabled" : ""}`}
+                aria-disabled={currentPage === 1}
+              >
+                ← 이전
+              </Link>
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+                <Link key={p} href={`/stocks?rank=all&page=${p}`} className={`chip${p === currentPage ? " active" : ""}`}>
+                  {p}
+                </Link>
+              ))}
+              <Link
+                href={`/stocks?rank=all&page=${Math.min(totalPages, currentPage + 1)}`}
+                className={`chip${currentPage === totalPages ? " disabled" : ""}`}
+                aria-disabled={currentPage === totalPages}
+              >
+                다음 →
+              </Link>
+            </div>
+          )}
         </div>
       ) : (
         <div className="empty-state">

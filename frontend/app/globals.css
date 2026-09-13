@@ -234,6 +234,8 @@ tr.clickable:hover { background: var(--surface-2); }
 }
 .chip.active { background: var(--accent); border-color: var(--accent); color: #1a1206; font-weight: 600; }
 .chip:hover:not(.active) { border-color: var(--text-faint); color: var(--text); }
+.chip.disabled { opacity: 0.4; pointer-events: none; }
+.pagination { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; padding: 16px 0 4px; }
 
 .btn {
   font-family: var(--font-inter), sans-serif;
