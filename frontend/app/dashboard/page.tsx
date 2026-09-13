@@ -56,7 +56,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
           insight={insight}
           generatedAtLabel={insight ? `${insight.generatedAt.slice(11, 16)} 생성` : undefined}
           linkStock
-          badgeLabel="오늘의 AI인사이트"
+          badgeLabel="오늘의 AI 인사이트"
         />
       </div>
 

@@ -8,7 +8,7 @@ const NAV_ITEMS = [
   { href: "/stocks", icon: "▤", label: "종목 목록" },
   { href: "/trade", icon: "⇄", label: "매수 / 매도" },
   { href: "/history", icon: "≡", label: "거래 내역" },
-  { href: "/holdings", icon: "▦", label: "보유 종목" },
+  { href: "/holdings", icon: "▦", label: "보유·관심 종목" },
   { href: "/mypage", icon: "◎", label: "마이페이지" },
 ];
 

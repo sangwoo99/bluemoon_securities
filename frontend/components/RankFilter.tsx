@@ -3,9 +3,9 @@
 import { useRouter, useSearchParams } from "next/navigation";
 
 const RANK_TYPES: { value: string; label: string }[] = [
+  { value: "all", label: "전체 종목" },
   { value: "fluctuation", label: "상승률 TOP10" },
   { value: "volume", label: "거래량 TOP10" },
-  { value: "all", label: "전체 종목" },
 ];
 
 export default function RankFilter({ current }: { current: string }) {
