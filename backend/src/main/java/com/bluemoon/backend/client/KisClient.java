@@ -10,13 +10,16 @@ import org.springframework.web.reactive.function.client.WebClientResponseExcepti
 
 import java.math.BigDecimal;
 import java.time.Duration;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Optional;
 
 /**
  * 한국투자증권(KIS) Open API 클라이언트. 시세 조회 전용 — 주문 관련 엔드포인트는 절대 호출하지 않는다
  * (모의투자 앱키를 쓰더라도, 실전 앱키로 잘못 설정된 경우 실제 주문이 나갈 수 있음).
- * 요청 경로에서는 절대 호출하지 않고, 배치({@link com.bluemoon.backend.service.PriceUpdateBatchService})에서만 사용한다.
+ * 요청 경로에서는 절대 호출하지 않고, 배치({@link com.bluemoon.backend.service.PriceUpdateBatchService},
+ * {@link com.bluemoon.backend.service.PriceHistoryBackfillService})에서만 사용한다.
  */
 @Slf4j
 @Component
@@ -26,6 +29,7 @@ public class KisClient {
     private static final String PRICE_TR_ID = "FHKST01010100";
     private static final String FLUCTUATION_RANK_TR_ID = "FHPST01700000";
     private static final String VOLUME_RANK_TR_ID = "FHPST01710000";
+    private static final String DAILY_PRICE_TR_ID = "FHKST03010100";
 
     private final WebClient webClient;
     private final StringRedisTemplate redisTemplate;
@@ -79,6 +83,55 @@ public class KisClient {
         } catch (Exception e) {
             log.warn("KIS 시세 조회 중 오류 — stockCode={}, error={}", stockCode, e.getMessage());
             return Optional.empty();
+        }
+    }
+
+    /**
+     * 국내주식 기간별시세를 조회한다. from~to 구간의 종가를 날짜별로 반환 (최대 100건, KIS 제약).
+     * periodDivCode: "D"(일봉)/"W"(주봉)/"M"(월봉) — 긴 기간은 주봉/월봉으로 받아야 100건 제약을 안 넘는다.
+     * 과거 시세 백필 전용 — 키 미설정/장애 시 빈 리스트를 반환한다.
+     */
+    public List<DailyPriceItem> getPriceHistory(String stockCode, LocalDate from, LocalDate to, String periodDivCode) {
+        String token = getAccessToken();
+        if (token == null) {
+            return List.of();
+        }
+
+        try {
+            DailyPriceResponse response = webClient.get()
+                    .uri(uriBuilder -> uriBuilder
+                            .path("/uapi/domestic-stock/v1/quotations/inquire-daily-itemchartprice")
+                            .queryParam("FID_COND_MRKT_DIV_CODE", "J")
+                            .queryParam("FID_INPUT_ISCD", stockCode)
+                            .queryParam("FID_INPUT_DATE_1", from.format(DateTimeFormatter.BASIC_ISO_DATE))
+                            .queryParam("FID_INPUT_DATE_2", to.format(DateTimeFormatter.BASIC_ISO_DATE))
+                            .queryParam("FID_PERIOD_DIV_CODE", periodDivCode)
+                            .queryParam("FID_ORG_ADJ_PRC", "0")
+                            .build())
+                    .header("authorization", "Bearer " + token)
+                    .header("appkey", appKey)
+                    .header("appsecret", appSecret)
+                    .header("tr_id", DAILY_PRICE_TR_ID)
+                    .header("custtype", "P")
+                    .retrieve()
+                    .bodyToMono(DailyPriceResponse.class)
+                    .timeout(Duration.ofSeconds(10))
+                    .block();
+
+            if (response == null || response.output2() == null || !"0".equals(response.rtCd())) {
+                log.warn("KIS 기간별시세 조회 실패 — stockCode={}, msg={}", stockCode, response != null ? response.msg1() : "응답 없음");
+                return List.of();
+            }
+            return response.output2().stream()
+                    .filter(o -> o.date() != null && !o.date().isBlank())
+                    .map(o -> new DailyPriceItem(LocalDate.parse(o.date(), DateTimeFormatter.BASIC_ISO_DATE), new BigDecimal(o.closePrice())))
+                    .toList();
+        } catch (WebClientResponseException e) {
+            log.warn("KIS 기간별시세 조회 중 오류 — stockCode={}, status={}, body={}", stockCode, e.getStatusCode(), e.getResponseBodyAsString());
+            return List.of();
+        } catch (Exception e) {
+            log.warn("KIS 기간별시세 조회 중 오류 — stockCode={}, error={}", stockCode, e.getMessage());
+            return List.of();
         }
     }
 
@@ -285,6 +338,22 @@ public class KisClient {
             @JsonProperty("stck_prpr") String currentPrice,
             @JsonProperty("prdy_ctrt") String changeRatePercent,
             @JsonProperty("acml_vol") String volume
+    ) {
+    }
+
+    public record DailyPriceItem(LocalDate date, BigDecimal closePrice) {
+    }
+
+    private record DailyPriceResponse(
+            @JsonProperty("rt_cd") String rtCd,
+            String msg1,
+            List<DailyPriceOutput2> output2
+    ) {
+    }
+
+    private record DailyPriceOutput2(
+            @JsonProperty("stck_bsop_date") String date,
+            @JsonProperty("stck_clpr") String closePrice
     ) {
     }
 }

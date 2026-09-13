@@ -1,17 +1,20 @@
 "use client";
 
-import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
+import { useElementSize } from "@/lib/useElementSize";
 import type { TrendPoint } from "@/lib/types";
 
 export default function AssetTrendChart({ data }: { data: TrendPoint[] }) {
+  const { ref, width, height } = useElementSize<HTMLDivElement>();
+
   if (data.length === 0) {
     return <div className="empty-state">표시할 자산 추이 데이터가 없습니다</div>;
   }
 
   return (
-    <div className="chart-box">
-      <ResponsiveContainer width="100%" height="100%">
-        <AreaChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+    <div className="chart-box" ref={ref}>
+      {width > 0 && height > 0 && (
+        <AreaChart width={width} height={height} data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
           <defs>
             <linearGradient id="assetTrendFill" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor="#ffb74a" stopOpacity={0.28} />
@@ -34,7 +37,7 @@ export default function AssetTrendChart({ data }: { data: TrendPoint[] }) {
           />
           <Area type="monotone" dataKey="value" stroke="#ffb74a" strokeWidth={2} fill="url(#assetTrendFill)" />
         </AreaChart>
-      </ResponsiveContainer>
+      )}
     </div>
   );
 }

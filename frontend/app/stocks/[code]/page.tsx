@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import PriceChart from "@/components/PriceChart";
+import PeriodFilter from "@/components/PeriodFilter";
 import AiInsightCard from "@/components/AiInsightCard";
 import WatchlistToggleButton from "@/components/WatchlistToggleButton";
 import { apiGet, ApiError } from "@/lib/api";
@@ -8,6 +9,13 @@ import { fmtPct } from "@/lib/format";
 import type { Insight, PricePoint, StockDetail, Trade } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
+
+const PERIOD_DAYS: Record<string, number> = {
+  "1w": 7,
+  "1m": 30,
+  "3m": 90,
+  "1y": 365,
+};
 
 async function safeGet<T>(path: string): Promise<T | null> {
   try {
@@ -17,8 +25,17 @@ async function safeGet<T>(path: string): Promise<T | null> {
   }
 }
 
-export default async function StockDetailPage({ params }: { params: Promise<{ code: string }> }) {
+export default async function StockDetailPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ code: string }>;
+  searchParams: Promise<{ period?: string }>;
+}) {
   const { code } = await params;
+  const resolvedSearchParams = await searchParams;
+  const period = PERIOD_DAYS[resolvedSearchParams.period ?? ""] ? resolvedSearchParams.period! : "1m";
+  const days = PERIOD_DAYS[period];
 
   let stock: StockDetail | null;
   try {
@@ -32,7 +49,7 @@ export default async function StockDetailPage({ params }: { params: Promise<{ co
   if (!stock) notFound();
 
   const [priceHistory, trades, insight, watchlist] = await Promise.all([
-    safeGet<PricePoint[]>(`/api/stocks/${code}/price-history?days=30`),
+    safeGet<PricePoint[]>(`/api/stocks/${code}/price-history?days=${days}`),
     safeGet<Trade[]>(`/api/trades/${code}`),
     safeGet<Insight>(`/api/insights/${code}`),
     safeGet<StockDetail[]>("/api/watchlist"),
@@ -81,8 +98,9 @@ export default async function StockDetailPage({ params }: { params: Promise<{ co
       <div className="grid grid-2" style={{ marginBottom: 16 }}>
         <div className="card">
           <div className="card-head">
-            <h3>시세 추이 (30일)</h3>
+            <h3>시세 추이</h3>
           </div>
+          <PeriodFilter current={period} />
           <PriceChart data={priceHistory ?? []} up={up} />
         </div>
 
