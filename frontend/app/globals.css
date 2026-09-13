@@ -56,7 +56,7 @@ a {
 }
 .ticker-track {
   display: inline-flex;
-  animation: scroll 32s linear infinite;
+  animation: scroll 70s linear infinite;
 }
 @media (prefers-reduced-motion: reduce) {
   .ticker-track { animation: none; }

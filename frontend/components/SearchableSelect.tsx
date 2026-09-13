@@ -91,7 +91,7 @@ export default function SearchableSelect({
           alignItems: "center",
           pointerEvents: "none",
           color: "var(--text-faint)",
-          fontSize: 11,
+          fontSize: 20,
           transform: open ? "rotate(180deg)" : undefined,
           transition: "transform 0.15s",
         }}
