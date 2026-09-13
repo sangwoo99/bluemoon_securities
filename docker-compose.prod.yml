@@ -1,0 +1,74 @@
+## 배포용 compose — 오라클 클라우드 VM(1 OCPU/1GB Always Free 등)에서 사용.
+##
+## docker-compose.yml(로컬 개발용)과의 차이는 딱 하나: Oracle DB 컨테이너가 없다.
+## Oracle Database는 VM에 직접 띄우지 않고, 별도로 무료 제공되는 Oracle Cloud
+## Autonomous Database(Always Free)에 연결한다 — VM의 1GB RAM을 전혀 쓰지 않는
+## 완전히 분리된 리소스라, Oracle DB 컨테이너(최소 1.5~2GB 권장)를 굳이 이 VM에
+## 태울 필요가 없다.
+##
+## 사용법:
+##   cp .env.prod.example .env.prod   # 값 채우기 (SPRING_DATASOURCE_URL 등)
+##   docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build
+##
+## Autonomous DB 연결 방법은 .env.prod.example 상단 주석 참고 (지갑 없는 TLS 방식 권장).
+
+services:
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    mem_limit: 80m
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_healthy
+    mem_limit: 550m
+    environment:
+      # MaxRAMPercentage는 컨테이너 메모리 제한(mem_limit) 기준으로 계산됨 — 1GB VM에서 다른 서비스와
+      # 나눠 쓰기 위해 힙을 550m의 절반 정도로 제한.
+      JDK_JAVA_OPTIONS: -XX:MaxRAMPercentage=50.0 -XX:+UseSerialGC
+      SPRING_DATASOURCE_URL: ${SPRING_DATASOURCE_URL}
+      SPRING_DATASOURCE_USERNAME: ${SPRING_DATASOURCE_USERNAME}
+      SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD}
+      TNS_ADMIN: /app/wallet
+      SPRING_REDIS_HOST: redis
+      SPRING_REDIS_PORT: 6379
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_ACCESS_EXPIRATION_MS: ${JWT_ACCESS_EXPIRATION_MS:-3600000}
+      JWT_REFRESH_EXPIRATION_MS: ${JWT_REFRESH_EXPIRATION_MS:-1209600000}
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4o-mini}
+      NEWSDATA_API_KEY: ${NEWSDATA_API_KEY}
+      KIS_APP_KEY: ${KIS_APP_KEY}
+      KIS_APP_SECRET: ${KIS_APP_SECRET}
+      KIS_ACCOUNT_NO: ${KIS_ACCOUNT_NO}
+      KIS_BASE_URL: ${KIS_BASE_URL}
+    # 지갑(mTLS) 방식으로 연결할 때만 필요 — 지갑 없는 TLS 방식이면 이 볼륨과 TNS_ADMIN을 지워도 된다.
+    # OCI 콘솔에서 내려받은 wallet zip을 이 경로에 압축 해제해두면 된다.
+    volumes:
+      - ./secrets/wallet:/app/wallet:ro
+    ports:
+      - "${SERVER_PORT:-8080}:8080"
+
+  nginx:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    mem_limit: 32m
+    depends_on:
+      - backend
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    ports:
+      - "80:80"
+
+volumes:
+  redis_data:

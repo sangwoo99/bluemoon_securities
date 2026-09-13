@@ -22,9 +22,13 @@ archive/rag-service/*.egg-info/
 
 # env files
 .env
+.env.prod
 *.env.local
 !.env.example
 !**/.env.example
+
+# 배포용 Oracle Autonomous DB 지갑 (mTLS 방식 사용 시) — 절대 커밋하지 말 것
+secrets/
 
 # IDE / OS
 .idea/

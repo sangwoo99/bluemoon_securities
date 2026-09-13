@@ -110,8 +110,25 @@ cd backend
 ## 배포
 
 - 프론트: Vercel (Git 연동 자동 배포)
-- 백엔드: 오라클 클라우드 Always Free VM에 `docker compose up -d --build`로 배포, Nginx가 `/api`를 백엔드로 리버스 프록시 (AI 인사이트도 이 백엔드 안에서 함께 처리되므로 별도 서비스 배포가 필요 없음)
+- 백엔드: 오라클 클라우드 VM에 배포, Nginx가 `/api`를 백엔드로 리버스 프록시 (AI 인사이트도 이 백엔드 안에서 함께 처리되므로 별도 서비스 배포가 필요 없음)
 - UptimeRobot으로 헬스체크 핑을 보내 인스턴스 유휴 회수 방지
+
+### 배포용 compose가 로컬 개발용과 다른 점
+
+VM이 **1 OCPU/1GB(AMD 상시 무료)** 처럼 작은 스펙이면 `docker-compose.yml`을 그대로 못 씁니다 — 거기 포함된 Oracle DB 컨테이너(`gvenzl/oracle-free`)만 해도 최소 1.5~2GB는 필요해서, 1GB 밖에 없는 VM에서는 아예 못 뜹니다.
+
+그래서 배포용으로 **`docker-compose.prod.yml`**을 따로 둡니다:
+
+- Oracle DB 컨테이너 없음 — 대신 **Oracle Cloud Autonomous Database(Always Free)**에 연결 (VM의 RAM을 전혀 안 씀, 완전히 분리된 무료 리소스)
+- `redis`/`backend`/`nginx` 각각에 `mem_limit`을 걸어 1GB 안에서 나눠 쓰게 함
+- `JDK_JAVA_OPTIONS: -XX:MaxRAMPercentage=50.0`으로 JVM 힙을 컨테이너 메모리 제한 기준으로 제한
+
+```bash
+cp .env.prod.example .env.prod   # SPRING_DATASOURCE_URL 등 Autonomous DB 연결 정보 채우기
+docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build
+```
+
+Autonomous DB 연결 문자열 만드는 방법(지갑 없는 TLS 방식 권장)은 `.env.prod.example` 상단 주석 참고.
 
 ## 개발 로드맵 (2주)
 

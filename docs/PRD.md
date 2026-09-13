@@ -108,7 +108,7 @@
 | LLM | OpenAI API (gpt-4o-mini 또는 상위 저비용 모델) | 비용 대비 성능 우수, 캐싱으로 월 비용 최소화 |
 | 인증 | JWT (Access + Refresh Token) | |
 | 배포 (FE) | Vercel | Git 연동 자동 배포, 무료 |
-| 배포 (BE) | 오라클 클라우드 Always Free (Ampere A1, 4 OCPU/24GB) | Docker Compose로 통합 관리. AI 인사이트가 백엔드에 통합되어 별도 RAG 서비스 없이도 배포 가능 |
+| 배포 (BE) | 오라클 클라우드 Always Free VM(AMD 1 OCPU/1GB 또는 Ampere A1) + Autonomous Database(Always Free, DB는 VM과 분리된 별도 무료 리소스) | `docker-compose.prod.yml`로 관리 — VM이 작아 로컬 개발용 Oracle 컨테이너는 안 띄우고 Autonomous DB에 연결. AI 인사이트가 백엔드에 통합되어 별도 RAG 서비스 없이도 배포 가능 |
 | 언어 버전 | **Java 17 (LTS)** | Spring Boot 3.x의 최소 요구 버전. 전통 금융권 채용 공고가 흔히 요구하는 "Java 11"과는 Spring Boot 3.x가 호환되지 않아(Spring Boot 3.x는 Java 17 이상 필수) 양립 가능한 가장 낮은 LTS로 채택 |
 | 헬스체크 | UptimeRobot | 오라클 유휴 인스턴스 회수 방지 |
 
