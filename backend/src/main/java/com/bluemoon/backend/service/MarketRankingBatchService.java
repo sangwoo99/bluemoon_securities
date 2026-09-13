@@ -17,12 +17,10 @@ import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.util.Comparator;
 import java.util.List;
-import java.util.stream.Stream;
 
 /**
- * KIS 등락률 순위 / 거래량 순위를 코스피·코스닥 각각 조회해 상위 10개씩 top_movers에 캐싱하는 배치.
+ * KIS 등락률 순위 / 거래량 순위를 코스피 기준으로 조회해 상위 10개씩 top_movers에 캐싱하는 배치.
  * PriceUpdateBatchService와 마찬가지로 요청 경로가 아닌 이 배치에서만 KIS를 호출한다.
  * 순위에 새로 등장한 종목은 STOCKS에 없을 수 있어 find-or-create로 반영한다.
  * top_movers는 ORDERS 같은 원장이 아니라 "지금 시점의 랭킹"을 보여주는 캐시라, rankType별로 매 실행마다
@@ -57,53 +55,35 @@ public class MarketRankingBatchService {
 
     private void refreshFluctuationRanking() {
         List<FluctuationRankItem> kospi = kisClient.getTopFluctuationStocks("0001", TOP_N);
-        sleep(CALL_INTERVAL_MS);
-        List<FluctuationRankItem> kosdaq = kisClient.getTopFluctuationStocks("1001", TOP_N);
 
-        List<RankedFluctuation> merged = Stream.concat(
-                        kospi.stream().map(item -> new RankedFluctuation(item, "KOSPI")),
-                        kosdaq.stream().map(item -> new RankedFluctuation(item, "KOSDAQ")))
-                .sorted(Comparator.comparing((RankedFluctuation r) -> r.item().changeRatePercent()).reversed())
-                .limit(TOP_N)
-                .toList();
-
-        if (merged.isEmpty()) {
+        if (kospi.isEmpty()) {
             log.warn("등락률 순위 조회 결과가 비어있어 갱신을 건너뜀");
             return;
         }
 
-        merged.forEach(r -> upsertStock(r.item().code(), r.item().name(), r.market(), r.item().currentPrice(), r.item().changeRatePercent()));
+        kospi.forEach(item -> upsertStock(item.code(), item.name(), "KOSPI", item.currentPrice(), item.changeRatePercent()));
 
         topMoverMapper.deleteByRankType(RankType.FLUCTUATION);
-        for (int i = 0; i < merged.size(); i++) {
-            RankedFluctuation r = merged.get(i);
-            topMoverMapper.insert(TopMover.fluctuation(r.item().code(), i + 1, r.item().changeRatePercent()));
+        for (int i = 0; i < kospi.size(); i++) {
+            FluctuationRankItem item = kospi.get(i);
+            topMoverMapper.insert(TopMover.fluctuation(item.code(), i + 1, item.changeRatePercent()));
         }
     }
 
     private void refreshVolumeRanking() {
         List<VolumeRankItem> kospi = kisClient.getTopVolumeStocks("0001", TOP_N);
-        sleep(CALL_INTERVAL_MS);
-        List<VolumeRankItem> kosdaq = kisClient.getTopVolumeStocks("1001", TOP_N);
 
-        List<RankedVolume> merged = Stream.concat(
-                        kospi.stream().map(item -> new RankedVolume(item, "KOSPI")),
-                        kosdaq.stream().map(item -> new RankedVolume(item, "KOSDAQ")))
-                .sorted(Comparator.comparing((RankedVolume r) -> r.item().volume(), Comparator.reverseOrder()))
-                .limit(TOP_N)
-                .toList();
-
-        if (merged.isEmpty()) {
+        if (kospi.isEmpty()) {
             log.warn("거래량 순위 조회 결과가 비어있어 갱신을 건너뜀");
             return;
         }
 
-        merged.forEach(r -> upsertStock(r.item().code(), r.item().name(), r.market(), r.item().currentPrice(), r.item().changeRatePercent()));
+        kospi.forEach(item -> upsertStock(item.code(), item.name(), "KOSPI", item.currentPrice(), item.changeRatePercent()));
 
         topMoverMapper.deleteByRankType(RankType.VOLUME);
-        for (int i = 0; i < merged.size(); i++) {
-            RankedVolume r = merged.get(i);
-            topMoverMapper.insert(TopMover.volume(r.item().code(), i + 1, r.item().changeRatePercent(), r.item().volume()));
+        for (int i = 0; i < kospi.size(); i++) {
+            VolumeRankItem item = kospi.get(i);
+            topMoverMapper.insert(TopMover.volume(item.code(), i + 1, item.changeRatePercent(), item.volume()));
         }
     }
 
@@ -129,11 +109,5 @@ public class MarketRankingBatchService {
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         }
-    }
-
-    private record RankedFluctuation(FluctuationRankItem item, String market) {
-    }
-
-    private record RankedVolume(VolumeRankItem item, String market) {
     }
 }
