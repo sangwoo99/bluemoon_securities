@@ -9,12 +9,17 @@ import org.springframework.web.reactive.function.client.WebClient;
 public class WebClientConfig {
 
     @Bean
-    public WebClient ragServiceWebClient(@Value("${app.rag-service.base-url}") String baseUrl) {
+    public WebClient kisWebClient(@Value("${app.kis.base-url}") String baseUrl) {
         return WebClient.builder().baseUrl(baseUrl).build();
     }
 
     @Bean
-    public WebClient kisWebClient(@Value("${app.kis.base-url}") String baseUrl) {
+    public WebClient openAiWebClient(@Value("${app.openai.base-url}") String baseUrl) {
+        return WebClient.builder().baseUrl(baseUrl).build();
+    }
+
+    @Bean
+    public WebClient newsDataWebClient(@Value("${app.newsdata.base-url}") String baseUrl) {
         return WebClient.builder().baseUrl(baseUrl).build();
     }
 }

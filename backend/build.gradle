@@ -30,7 +30,7 @@ ext {
 
 dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-web'
-	implementation 'org.springframework.boot:spring-boot-starter-webflux' // RagServiceClient용 WebClient
+	implementation 'org.springframework.boot:spring-boot-starter-webflux' // KIS/OpenAI/NewsData.io WebClient용
 	implementation "org.mybatis.spring.boot:mybatis-spring-boot-starter:${mybatisVersion}"
 	implementation 'org.springframework.boot:spring-boot-starter-security'
 	implementation 'org.springframework.boot:spring-boot-starter-validation'

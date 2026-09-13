@@ -3,7 +3,7 @@
 - **프로젝트**: RAG 인사이트 기반 모의투자 포트폴리오 트래커
 - **프론트엔드**: Next.js (완료, mock 데이터 기반)
 - **백엔드**: Spring Boot (설계 예정)
-- **AI 인사이트**: Python RAG 마이크로서비스 (설계 예정)
+- **AI 인사이트**: Spring Boot 배치 내부 처리 (뉴스 검색 + LLM 요약, `docs/api-spec.md` 6장 — 원래는 Python RAG 마이크로서비스로 설계했으나 배포 환경 제약으로 통합, `archive/rag-service` 참고)
 - **문서 목적**: 화면별 요구사항을 명확히 정의해서, 이 문서를 기준으로 Spring Boot API를 설계한다.
 
 ---
@@ -47,12 +47,12 @@
 | `/api/portfolio/summary` | GET | 총 평가금액, 총 손익, 원금 |
 | `/api/portfolio/trend?period=` | GET | 자산 변화 추이 차트 |
 | `/api/holdings` | GET | 보유 종목 요약 표, 자산 배분 차트 |
-| `/api/insights/today` | GET | AI 추천 종목 1개 + 근거 + 출처 (Python RAG 서비스 프록시) |
+| `/api/insights/today` | GET | AI 추천 종목 1개 + 근거 + 출처 (Spring Boot 배치 캐시 조회) |
 
 **상태 처리**
 - 로딩: 요약 카드 3개 + 차트 영역 스켈레톤
 - 빈 상태: 보유 종목이 0개면 "아직 보유한 종목이 없습니다 → 매수하러 가기" 안내
-- 에러: AI 인사이트 조회 실패 시에도 나머지 화면은 정상 표시하고, 인사이트 카드만 "일시적으로 인사이트를 불러올 수 없습니다"로 대체 (RAG 서비스 장애가 전체 대시보드를 막지 않도록)
+- 에러: AI 인사이트 조회 실패 시에도 나머지 화면은 정상 표시하고, 인사이트 카드만 "일시적으로 인사이트를 불러올 수 없습니다"로 대체 (AI 인사이트 생성/조회 실패가 전체 대시보드를 막지 않도록)
 
 **관련 컴포넌트**: `AiInsightCard`, `HoldingsTable(variant=compact)`, `AssetTrendChart`, `AllocationChart`
 
@@ -79,7 +79,7 @@
 | `/api/stocks/{code}` | GET | 종목명, 현재가, 전일종가 |
 | `/api/stocks/{code}/price-history?days=30` | GET | 시세 추이 차트 |
 | `/api/trades/{code}` | GET | 내 매매 이력 (이 종목만) |
-| `/api/insights/{code}` | GET | AI 뉴스 인사이트 (Python RAG 서비스 프록시) |
+| `/api/insights/{code}` | GET | AI 뉴스 인사이트 (Spring Boot 배치 캐시 조회) |
 
 **상태 처리**
 - 로딩: 차트/인사이트/표 각각 개별 스켈레톤 (전체 페이지 블로킹 금지)
@@ -210,7 +210,7 @@
 | `/api/trades/{code}` | GET | 종목상세 |
 | `/api/orders` | POST | 매수매도 |
 | `/api/orders` | GET | 거래내역 |
-| `/api/insights/today` | GET | 대시보드 (RAG 프록시) |
-| `/api/insights/{code}` | GET | 종목상세 (RAG 프록시) |
+| `/api/insights/today` | GET | 대시보드 (배치 캐시) |
+| `/api/insights/{code}` | GET | 종목상세 (배치 캐시) |
 
 이 표가 다음 단계인 Spring Boot 백엔드 설계(엔티티 · DB 스키마 · 컨트롤러)의 출발점이 됩니다.

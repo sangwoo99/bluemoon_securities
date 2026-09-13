@@ -12,13 +12,13 @@ backend/out/
 backend/bin/
 *.class
 
-# rag-service (Python)
-rag-service/__pycache__/
-rag-service/**/__pycache__/
-rag-service/.venv/
-rag-service/venv/
-rag-service/chroma_db/
-rag-service/*.egg-info/
+# rag-service (Python, 백업 — archive/rag-service 참고)
+archive/rag-service/__pycache__/
+archive/rag-service/**/__pycache__/
+archive/rag-service/.venv/
+archive/rag-service/venv/
+archive/rag-service/chroma_db/
+archive/rag-service/*.egg-info/
 
 # env files
 .env

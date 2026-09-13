@@ -14,11 +14,12 @@
 ## 저장소 구조 (모노레포)
 
 ```
-/frontend       Next.js 14 (App Router), TypeScript
-/backend        Spring Boot 3.x, Java 17, Gradle, MyBatis
-/rag-service    Python 3.11+, FastAPI, LangChain
-/docs           설계 문서 (PRD, DB 스키마, API 명세, 스토리보드)
-/nginx          리버스 프록시 설정 (VM 배포용)
+/frontend            Next.js 14 (App Router), TypeScript
+/backend             Spring Boot 3.x, Java 17, Gradle, MyBatis (AI 인사이트 생성 포함)
+/docs                설계 문서 (PRD, DB 스키마, API 명세, 스토리보드)
+/nginx               리버스 프록시 설정 (VM 배포용)
+/archive/rag-service (백업, 미사용) Python+FastAPI+LangChain+Chroma RAG 파이프라인 — 오라클 프리티어 메모리 제약으로
+                     Spring Boot로 이식하며 중단. 상세: `archive/rag-service/ARCHIVE.md`
 ```
 
 ## 빌드 / 테스트 명령어
@@ -37,10 +38,7 @@ cd backend && ./gradlew bootRun # 개발 서버
 cd backend && ./gradlew test    # 테스트 (H2를 Oracle 근사 모드로 사용)
 cd backend && ./gradlew build   # 빌드 (커밋 전 항상 실행)
 
-# rag-service
-cd rag-service && pip install -r requirements.txt
-cd rag-service && uvicorn main:app --reload --port 8000
-cd rag-service && pytest
+# rag-service는 현재 미사용 — archive/rag-service에 백업됨 (되살리는 방법: archive/rag-service/ARCHIVE.md)
 ```
 
 ## 절대 규칙 (위반 시 실제 버그로 이어짐)
@@ -61,10 +59,19 @@ cd rag-service && pytest
 모든 API는 `{ success, data, error }` 래퍼를 사용합니다 (상세: `docs/api-spec.md`).
 컨트롤러에서 이 래퍼를 매번 손으로 만들지 말고, 공통 `ApiResponse<T>` 래퍼 클래스 + `@RestControllerAdvice` 예외 핸들러로 처리합니다.
 
-## RAG 서비스 연동
+## AI 인사이트 생성
 
-Spring Boot는 Python RAG 서비스를 내부 API로만 호출합니다 (`docs/api-spec.md` 6장).
-RAG 서비스를 외부(프론트엔드)에 직접 노출하지 않습니다 — 반드시 Spring Boot를 거칩니다.
+별도 Python RAG 서비스 없이, Spring Boot 내부에서 직접 뉴스 검색 + LLM 요약을 수행합니다.
+`NewsDataClient`(뉴스 검색) → `InsightGenerationService`(프롬프트 구성 + 요약) → `OpenAiClient`(Chat Completions 호출)
+순서로 동작하며, 오직 `InsightBatchService`(하루 1회 배치)에서만 이 흐름을 호출합니다 (`docs/api-spec.md` 6장).
+기존 Python+FastAPI+LangChain+Chroma 기반 RAG 파이프라인은 오라클 클라우드 프리티어의 메모리 제약으로 중단하고
+`archive/rag-service`에 백업해두었습니다. 컴퓨팅 자원이 확보되면 그 코드를 되살려 벡터 검색 기반으로 다시
+전환할 수 있습니다 (되살리는 방법: `archive/rag-service/ARCHIVE.md`).
+
+**뉴스 소스는 네이버 뉴스 검색 API가 아닌 NewsData.io를 사용합니다.** 네이버가 2026-07-31부로 검색 API 신규
+발급을 NCP "NAVER API HUB"로 이관했고, 2026-09-07 개정 약관에서 검색 결과를 AI 입력/요약에 활용하는 것 자체를
+금지해 지금 하는 일과 정면으로 충돌하기 때문입니다. NewsData.io는 무료 플랜(200 크레딧/일)으로도 개인/상업적
+이용을 이용약관에 명시적으로 허용하고, 한국경제·매일경제 등 국내 경제지도 커버합니다.
 
 ## 배포 환경
 

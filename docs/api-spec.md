@@ -266,7 +266,7 @@
 
 ---
 
-## 5. AI 인사이트 (Python RAG 서비스 프록시)
+## 5. AI 인사이트 (Spring Boot 배치 캐시 조회)
 
 ### GET `/api/insights/today`
 **Response 200**
@@ -282,11 +282,11 @@
   }
 }
 ```
-**Response 200 (인사이트 없음/RAG 서비스 장애 시)**
+**Response 200 (인사이트 없음/조회 실패 시)**
 ```json
 { "success": true, "data": null }
 ```
-> RAG 서비스 장애가 대시보드 전체를 막지 않도록, 이 엔드포인트는 실패해도 `success: true, data: null`로 응답하고 프론트에서 "일시적으로 인사이트를 불러올 수 없습니다"로 처리 (스토리보드 2.1 에러 처리 참고)
+> AI 인사이트 조회 실패(또는 배치 미실행으로 캐시 없음)가 대시보드 전체를 막지 않도록, 이 엔드포인트는 실패해도 `success: true, data: null`로 응답하고 프론트에서 "일시적으로 인사이트를 불러올 수 없습니다"로 처리 (스토리보드 2.1 에러 처리 참고)
 
 ### GET `/api/insights/{code}`
 **Response 200**
@@ -303,20 +303,26 @@
 
 ---
 
-## 6. 내부 전용 — Spring Boot ↔ Python RAG 서비스
+## 6. 내부 전용 — AI 인사이트 생성 흐름 (Spring Boot 배치 내부)
 
-Spring Boot가 Python RAG 서비스를 호출하는 내부 API (외부에 노출되지 않음, 같은 VM 내부 통신)
+별도 네트워크 API가 아니라 `InsightBatchService`(하루 1회 배치, `docs/db-schema.md` 배치 요약 참고)가 직접 호출하는
+내부 컴포넌트 체인입니다 (외부 노출 없음). 요청 경로(`/api/insights/*`)에서는 절대 호출하지 않습니다.
 
-### POST `{rag-service}/generate-insight`
-**Request Body**
-```json
-{ "stockCode": "005930", "stockName": "삼성전자" }
-```
-**Response 200**
-```json
-{ "content": "...", "sources": [{ "name": "한국경제", "date": "2026-08-26" }] }
-```
-> Spring Boot 배치가 이 엔드포인트를 하루 1회 호출해 `AI_INSIGHTS` 테이블에 저장 (실시간 호출 아님 — 비용 절감을 위한 캐싱 전략, PRD의 성공 기준과 연결)
+1. `NewsDataClient.searchNews(stockName, 10)` — NewsData.io `/api/1/latest`로 종목명 관련 최신 한국어 기사 조회 (최대 10건)
+2. `InsightGenerationService.generate(stockCode, stockName)` — 상위 5건을 컨텍스트로 구성해 프롬프트 조립
+3. `OpenAiClient.chat(systemPrompt, userPrompt)` — OpenAI Chat Completions API 호출, "매수/매도 추천 금지" 시스템 프롬프트 고정
+4. 결과(`content` + `sources`)를 `AI_INSIGHTS` 테이블에 INSERT
+
+뉴스가 없거나 LLM 호출이 실패하면 해당 종목은 건너뛰고 다음 종목을 계속 처리합니다 (Spring Boot 배치가 이 흐름을
+하루 1회 호출해 캐싱 — 실시간 호출 아님, 비용 절감을 위한 전략, PRD의 성공 기준과 연결).
+
+> **변경 이력**: 과거에는 이 자리에 Spring Boot ↔ Python RAG 서비스(`POST /generate-insight`) 간 내부 HTTP API가
+> 있었으나, 오라클 프리티어 메모리 제약으로 Spring Boot 내부 처리로 통합하며 제거했습니다. 옛 계약은
+> `archive/rag-service/ARCHIVE.md`에 남아 있습니다.
+>
+> **뉴스 소스 변경 이력**: 처음엔 네이버 뉴스 검색 API를 썼으나, 네이버가 검색 API 신규 발급을 NCP로 이관하고
+> (2026-07-31) 검색 결과의 AI 입력/요약 활용을 약관으로 금지해(2026-09-07 시행) NewsData.io로 교체했습니다.
+> NewsData.io는 무료 플랜(200 크레딧/일)으로 개인/상업적 이용을 이용약관에 명시적으로 허용합니다.
 
 ---
 

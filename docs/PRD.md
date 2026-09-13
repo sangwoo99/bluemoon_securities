@@ -1,6 +1,8 @@
 # 블루문 — 요구사항 정의서(PRD) & 기술스택 문서
 
 > **업데이트 안내**: 채용 시장 분석 결과에 따라 백엔드 스택을 전통 금융권(은행/증권사 계정계)에서 실제로 요구하는 조합(MyBatis + Oracle)으로 전환했습니다. 아래 PART 2는 이를 반영한 버전입니다. PART 1(요구사항)은 스택 전환과 무관하게 유지됩니다.
+>
+> **업데이트 안내 2**: 오라클 클라우드 프리티어 VM에 배포를 시도한 결과 Python RAG 서비스(FastAPI+LangChain+Chroma)까지 함께 띄우기엔 메모리가 부족했고, AI 인사이트 기능 자체도 벡터 검색이 꼭 필요할 만큼 AI 의존도가 높지 않아 Spring Boot 내부 처리로 통합했습니다. 기존 RAG 파이프라인은 `archive/rag-service`에 백업, 컴퓨팅 자원 확보 시 재도입 가능 (PART 2, 3장 트레이드오프 참고).
 
 ---
 
@@ -28,7 +30,7 @@
 3. 종목별 시세 추이 차트 (30일)
 4. 자산 변화 추이 및 자산 배분 시각화
 5. 거래 내역 조회 (종목별 필터)
-6. RAG 기반 AI 인사이트 — 뉴스/공시 검색 후 종목 요약 정보 제공 (매수/매도 추천이 아닌 참고 정보로 프레이밍, 면책 문구 필수)
+6. AI 인사이트 — 뉴스 검색 후 종목 요약 정보 제공 (매수/매도 추천이 아닌 참고 정보로 프레이밍, 면책 문구 필수). Spring Boot 배치에서 뉴스 검색 + LLM 요약을 직접 수행 (과거 RAG 파이프라인은 `archive/rag-service`에 백업, PART 2 참고)
 
 ### 4. 이번에는 하지 않는 것 (Out-of-scope)
 
@@ -68,12 +70,12 @@
 ### 1. 전체 구성
 
 ```
-[Next.js Frontend]  ---REST--->  [Spring Boot 백엔드 (MyBatis)]  ---내부 API--->  [Python RAG 서비스 (FastAPI)]
-     (Vercel)                    (오라클 클라우드 VM)                              (오라클 클라우드 VM, 동일 서버)
-                                        |                                              |
-                                [Oracle Database]                              [Chroma 벡터 DB]
-                                (Autonomous DB, Always Free)                          |
-                                        |                                       [OpenAI API]
+[Next.js Frontend]  ---REST--->  [Spring Boot 백엔드 (MyBatis)]
+     (Vercel)                    (오라클 클라우드 VM)
+                                        |        \
+                                [Oracle Database]  \---[NewsData.io 뉴스 검색] --- [OpenAI API]
+                                (Autonomous DB, Always Free)   (배치 전용, AI 인사이트 생성)
+                                        |
                                     [Redis]
                               (시세 캐싱, 재고 락)
                                         |
@@ -81,7 +83,17 @@
                                  (모의투자, 시세 조회)
 ```
 
-> **의도적인 이중 구조**: 백엔드 코어(계정/거래)는 전통 금융권 스택(MyBatis+Oracle)으로, AI 인사이트 서비스는 최신 스택(Python+FastAPI+LangChain)으로 분리했습니다. "핵심 거래 시스템은 안정성과 예측 가능한 SQL을, 부가 기능은 생태계가 앞선 최신 도구를" 선택한다는 실제 금융권의 사고방식을 그대로 반영한 구조입니다.
+> **아키텍처 변경 이력**: 원래는 AI 인사이트를 별도 Python RAG 마이크로서비스(FastAPI+LangChain+Chroma)로 분리했으나,
+> 오라클 클라우드 프리티어 VM에 실제로 배포해보니 Python 프로세스까지 함께 띄우기엔 메모리가 부족했습니다.
+> AI 인사이트가 "뉴스 검색 → LLM 요약" 수준으로 벡터 검색이 꼭 필요한 기능은 아니라고 판단해, Spring Boot 배치
+> 내부에서 뉴스 검색(`NewsDataClient`)과 LLM 요약(`OpenAiClient`)을 직접 호출하는 구조로 통합했습니다.
+> 기존 RAG 파이프라인 코드는 `archive/rag-service`에 백업했고, 컴퓨팅 자원이 확보되면 재도입할 수 있습니다.
+>
+> **뉴스 소스 변경 이력**: 처음엔 네이버 뉴스 검색 API를 썼으나, 네이버가 검색 API 신규 발급을 NCP "NAVER API HUB"로
+> 이관하고(2026-07-31) 검색 결과의 AI 입력/요약 활용을 약관으로 금지해(2026-09-07 시행) 지금 하려는 일과 정면
+> 충돌했습니다. 대안으로 검토한 구글 뉴스 검색 RSS(비공식 엔드포인트)도 "개인적·비상업적 용도"로만 쓰라는
+> 저작권 문구가 있어 최종적으로 이용약관에 개인/상업적 이용을 명시적으로 허용하는 NewsData.io(무료 200크레딧/일)로
+> 정착했습니다.
 
 ### 2. 레이어별 스택
 
@@ -90,14 +102,13 @@
 | 프론트엔드 | Next.js 14 (App Router), TypeScript, recharts | 채용 공고 요구 빈도 높음, SSR/정적 생성으로 성능 어필 |
 | 백엔드 | Spring Boot 3.x, **MyBatis**, Spring Security | 전통 금융권(계정계) 채용 시장에서 압도적으로 요구되는 조합. SQL을 직접 제어해 예측 가능성 확보 |
 | DB | **Oracle Database** (로컬: `gvenzl/oracle-free` Docker 이미지, Oracle Free 23c 기반 / 배포: Oracle Cloud Autonomous Database, Always Free) | 국내 금융권 표준 DB. 무료 티어로 실비용 없이 실제 Oracle 엔진 경험 확보 |
-| RAG 서비스 | Python, FastAPI, LangChain | AI/ML 생태계 성숙도가 Java 대비 압도적으로 높음 → 폴리글랏 아키텍처로 의도적 분리 |
-| 벡터 DB | Chroma (임베디드 모드) | 별도 서버 불필요 |
+| AI 인사이트 | Spring Boot 내부 (`WebClient`로 NewsData.io 뉴스 검색 + OpenAI Chat Completions 직접 호출) | 프리티어 VM 메모리 제약으로 별도 Python 프로세스를 없애고 백엔드에 통합. 벡터 검색(Chroma)은 이 기능엔 과한 설계였다고 판단해 제거 — 상세: PART 2 3장 트레이드오프, `archive/rag-service` |
 | 캐시 | Redis | 시세 조회 캐싱, 잔고 동시성 제어 |
 | 외부 시세 API | 한국투자증권 KIS Developers (모의투자) | 실제 증권사 API 연동 경험, 무료 |
 | LLM | OpenAI API (gpt-4o-mini 또는 상위 저비용 모델) | 비용 대비 성능 우수, 캐싱으로 월 비용 최소화 |
 | 인증 | JWT (Access + Refresh Token) | |
 | 배포 (FE) | Vercel | Git 연동 자동 배포, 무료 |
-| 배포 (BE + RAG) | 오라클 클라우드 Always Free (Ampere A1, 4 OCPU/24GB) | Docker Compose로 통합 관리 |
+| 배포 (BE) | 오라클 클라우드 Always Free (Ampere A1, 4 OCPU/24GB) | Docker Compose로 통합 관리. AI 인사이트가 백엔드에 통합되어 별도 RAG 서비스 없이도 배포 가능 |
 | 언어 버전 | **Java 17 (LTS)** | Spring Boot 3.x의 최소 요구 버전. 전통 금융권 채용 공고가 흔히 요구하는 "Java 11"과는 Spring Boot 3.x가 호환되지 않아(Spring Boot 3.x는 Java 17 이상 필수) 양립 가능한 가장 낮은 LTS로 채택 |
 | 헬스체크 | UptimeRobot | 오라클 유휴 인스턴스 회수 방지 |
 
@@ -107,12 +118,13 @@
 - **"Java 11" 대신 Java 17 채택**: 채용 공고 기준으로는 Java 11이 더 흔하지만, Spring Boot 3.x 자체가 Java 17 미만을 지원하지 않아 두 요구사항이 서로 모순됨. Spring Boot 3.x(최신 보안 패치·Jakarta EE 9 네임스페이스)를 유지하는 쪽을 택하고, 두 요구사항이 충돌한다는 사실 자체를 README에 트레이드오프로 명시.
 - **Oracle을 무료 티어로 확보**: 로컬은 로그인 없이 받을 수 있는 `gvenzl/oracle-free` 커뮤니티 이미지(Oracle Free 23c 기반), 배포는 Oracle Cloud Autonomous Database(Always Free)를 조합해, 라이선스 비용 없이 실제 Oracle 엔진 경험을 확보.
 - **WebSocket 대신 REST 폴링 + 캐싱**: 무료 호스팅 환경에서 상시 연결 유지가 어렵고, 실제 사용 패턴(사용자가 보고 있을 때만 갱신 필요)을 고려해 의도적으로 선택.
-- **RAG를 별도 Python 마이크로서비스로 분리**: 백엔드 코어는 안정성 중심(MyBatis+Oracle)으로 보수적으로 가되, AI 인사이트처럼 실험적인 기능은 생태계가 앞선 스택(Python)으로 분리해 리스크를 격리.
+- **(변경 전) RAG를 별도 Python 마이크로서비스로 분리**: 백엔드 코어는 안정성 중심(MyBatis+Oracle)으로 보수적으로 가되, AI 인사이트처럼 실험적인 기능은 생태계가 앞선 스택(Python)으로 분리해 리스크를 격리하려 했음.
+- **(변경 후) AI 인사이트를 Spring Boot로 통합**: 오라클 클라우드 프리티어 VM에 실제 배포해보니 Python(FastAPI+LangChain+Chroma) 프로세스까지 함께 뜨기엔 메모리가 부족했음. AI 인사이트 기능 자체도 "뉴스 검색 → LLM 요약" 수준이라 벡터 검색이 꼭 필요하지 않다고 판단해, 별도 서비스/네트워크 홉 없이 Spring Boot 배치 안에서 직접 처리하도록 전환. 폴리글랏 마이크로서비스 분리가 늘 정답은 아니며, 배포 환경의 실제 제약(메모리)과 기능의 AI 의존도를 함께 고려해 아키텍처를 재조정한 사례. 기존 RAG 코드는 `archive/rag-service`에 백업, 컴퓨팅 자원 확보 시 재도입 가능.
 - **AI 인사이트를 "추천"이 아닌 "요약 정보"로 프레이밍**: 투자자문업 관련 법적 리스크 회피, 출처 표기 및 면책 문구 고정.
 
 ### 4. 버전 관리 원칙
 
 - **Java 17 (LTS)**, Spring Boot 3.3.x
 - Node.js 20.x LTS, Next.js 14.2.x
-- Python 3.11+
+- Python 3.11+ (현재 미사용 — `archive/rag-service` 재도입 시에만 필요)
 - Oracle Database 23c Free / Autonomous Database

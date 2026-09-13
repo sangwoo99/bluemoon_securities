@@ -38,7 +38,7 @@ STOCKS 1───N TOP_MOVERS
 | `ORDERS` | 매수/매도 주문 = 거래 내역 | 매수매도, 거래내역, 종목상세 |
 | `PRICE_SNAPSHOTS` | 종목 시세 일별 스냅샷 | 종목상세 (시세 추이) |
 | `ACCOUNT_SNAPSHOTS` | 계좌 총자산 일별 스냅샷 | 대시보드 (자산 변화 추이) |
-| `AI_INSIGHTS` | RAG 생성 인사이트 캐시 | 대시보드, 종목상세 |
+| `AI_INSIGHTS` | AI 인사이트 캐시 (배치 생성) | 대시보드, 종목상세 |
 | `DAILY_PICKS` | 계좌별 "오늘의 추천 종목" 매핑 | 대시보드 |
 | `WATCHLISTS` | 계좌별 관심종목(즐겨찾기) | 종목상세 |
 | `TOP_MOVERS` | "오늘의 상승률 TOP 10" 캐시 | 종목목록 |
@@ -137,11 +137,11 @@ STOCKS 1───N TOP_MOVERS
 |---|---|---|---|
 | id | NUMBER(19) | PK, IDENTITY | |
 | stock_code | VARCHAR2(6) | FK → STOCKS.code, NOT NULL | |
-| content | CLOB | NOT NULL | RAG 생성 텍스트 |
+| content | CLOB | NOT NULL | AI 생성 요약 텍스트 |
 | sources | CLOB | NOT NULL, CHECK (sources IS JSON) | `[{"name": "...", "date": "..."}]`. 네이티브 JSON 타입(Oracle 21c+) 대신 이식성이 높은 CLOB+JSON 제약을 사용 |
 | generated_at | TIMESTAMP | NOT NULL | |
 
-> **오직 배치(하루 1회)만 이 테이블에 INSERT**. Spring Boot 스케줄러가 Python RAG 서비스의 `POST /generate-insight`를 호출해 결과를 저장. 요청 경로(`/api/insights/*`)는 항상 이 테이블을 SELECT만 함 (CLAUDE.md 절대 규칙).
+> **오직 배치(하루 1회)만 이 테이블에 INSERT**. Spring Boot 스케줄러(`InsightBatchService`)가 `NewsDataClient`(뉴스 검색)+`OpenAiClient`(요약 생성)를 직접 호출해 결과를 저장 (과거엔 Python RAG 서비스의 `POST /generate-insight`를 호출했으나 오라클 프리티어 메모리 제약으로 Spring Boot 내부 처리로 통합, `archive/rag-service` 참고). 요청 경로(`/api/insights/*`)는 항상 이 테이블을 SELECT만 함 (CLAUDE.md 절대 규칙).
 > **인덱스**: `(stock_code, generated_at DESC)` — 종목별 최신 인사이트 조회.
 
 ### DAILY_PICKS
@@ -228,7 +228,7 @@ MyBatis는 JPA와 달리 변경사항을 자동으로 모아 처리하지 않으
 | 시세 갱신 | 평일 장중 10분 간격 | `STOCKS.current_price` |
 | 등락률·거래량 순위 갱신 | 평일 장중 10분 간격 + 앱 기동 시 1회 | `TOP_MOVERS`, (신규 종목 시) `STOCKS` |
 | 가격/자산 스냅샷 | 1일 1회 (장마감 후, 16:00 KST) | `PRICE_SNAPSHOTS`, `ACCOUNT_SNAPSHOTS` |
-| AI 인사이트 생성 | 1일 1회 (08:00 KST) | `AI_INSIGHTS`, `DAILY_PICKS` (Python RAG 서비스 호출) |
+| AI 인사이트 생성 | 1일 1회 (08:00 KST) | `AI_INSIGHTS`, `DAILY_PICKS` (뉴스 검색+LLM 요약을 Spring Boot 내부에서 직접 호출) |
 
 ## 6. 다음 단계 체크리스트
 
