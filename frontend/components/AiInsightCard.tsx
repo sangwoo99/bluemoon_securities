@@ -5,16 +5,18 @@ export default function AiInsightCard({
   insight,
   generatedAtLabel,
   linkStock = false,
+  badgeLabel = "AI 인사이트",
 }: {
   insight: Insight | null;
   generatedAtLabel?: string;
   linkStock?: boolean;
+  badgeLabel?: string;
 }) {
   if (!insight) {
     return (
       <div className="card ai-card">
         <div className="card-head">
-          <span className="ai-badge">✦ AI 인사이트</span>
+          <span className="ai-badge">✦ {badgeLabel}</span>
         </div>
         <p className="ai-reason">최근 뉴스가 없어 인사이트를 불러올 수 없습니다.</p>
       </div>
@@ -24,7 +26,7 @@ export default function AiInsightCard({
   return (
     <div className="card ai-card">
       <div className="card-head">
-        <span className="ai-badge">✦ AI 인사이트</span>
+        <span className="ai-badge">✦ {badgeLabel}</span>
         {generatedAtLabel && <span style={{ fontSize: 11, color: "var(--text-faint)" }}>{generatedAtLabel}</span>}
       </div>
 

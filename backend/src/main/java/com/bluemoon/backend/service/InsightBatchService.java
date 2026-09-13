@@ -1,15 +1,16 @@
 package com.bluemoon.backend.service;
 
 import com.bluemoon.backend.domain.account.Account;
-import com.bluemoon.backend.domain.holding.Holding;
 import com.bluemoon.backend.domain.insight.AiInsight;
 import com.bluemoon.backend.domain.insight.DailyPick;
+import com.bluemoon.backend.domain.stock.RankType;
 import com.bluemoon.backend.domain.stock.Stock;
 import com.bluemoon.backend.mapper.AccountMapper;
 import com.bluemoon.backend.mapper.AiInsightMapper;
 import com.bluemoon.backend.mapper.DailyPickMapper;
 import com.bluemoon.backend.mapper.HoldingMapper;
 import com.bluemoon.backend.mapper.StockMapper;
+import com.bluemoon.backend.mapper.TopMoverMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -20,7 +21,10 @@ import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * 하루 1회 뉴스 검색 + LLM 요약으로 AI_INSIGHTS/DAILY_PICKS를 채우는 배치.
@@ -36,6 +40,7 @@ public class InsightBatchService {
     private final HoldingMapper holdingMapper;
     private final AiInsightMapper aiInsightMapper;
     private final DailyPickMapper dailyPickMapper;
+    private final TopMoverMapper topMoverMapper;
     private final InsightGenerationService insightGenerationService;
 
     /** 매일 08:00 KST에 실행. */
@@ -55,15 +60,22 @@ public class InsightBatchService {
             generatedByStock.put(stock.getCode(), insight);
         }
 
+        // 계좌가 보유하지 않은 종목 중, 거래량 TOP 랭킹 순으로 훑어 인사이트가 만들어진 첫 종목을 "새로 눈여겨볼 만한 종목"으로 추천한다.
+        List<String> volumeRankedCodes = topMoverMapper.findStockCodesByRankTypeOrderByRank(RankType.VOLUME);
+
         LocalDate today = LocalDate.now();
         for (Account account : accountMapper.findAll()) {
             if (dailyPickMapper.findByAccountIdAndPickDate(account.getId(), today).isPresent()) {
                 continue;
             }
-            List<Holding> holdings = holdingMapper.findByAccountIdAndQuantityGreaterThan(account.getId(), 0L);
-            holdings.stream()
-                    .map(h -> generatedByStock.get(h.getStockCode()))
-                    .filter(java.util.Objects::nonNull)
+            Set<String> heldCodes = holdingMapper.findByAccountIdAndQuantityGreaterThan(account.getId(), 0L).stream()
+                    .map(h -> h.getStockCode())
+                    .collect(Collectors.toSet());
+
+            volumeRankedCodes.stream()
+                    .filter(code -> !heldCodes.contains(code))
+                    .map(generatedByStock::get)
+                    .filter(Objects::nonNull)
                     .findFirst()
                     .ifPresent(insight -> dailyPickMapper.insert(new DailyPick(account.getId(), insight.getId(), today)));
         }
