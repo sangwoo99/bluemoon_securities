@@ -21,14 +21,19 @@ function stockRate(s: StockDetail): number {
   return s.prevClose !== 0 ? ((s.currentPrice - s.prevClose) / s.prevClose) * 100 : 0;
 }
 
+async function getTopMoverItems(): Promise<TickerItem[]> {
+  try {
+    const topMovers = (await apiGet<StockDetail[]>("/api/stocks/top-movers?type=VOLUME")) ?? [];
+    return topMovers.map((s) => ({ code: s.code, name: s.name, price: s.currentPrice, rate: stockRate(s) }));
+  } catch {
+    return [];
+  }
+}
+
 async function getTickerItems(isAuthenticated: boolean): Promise<TickerItem[]> {
+  const topMoverItems = await getTopMoverItems();
   if (!isAuthenticated) {
-    try {
-      const topMovers = (await apiGet<StockDetail[]>("/api/stocks/top-movers?type=VOLUME")) ?? [];
-      return topMovers.map((s) => ({ code: s.code, name: s.name, price: s.currentPrice, rate: stockRate(s) }));
-    } catch {
-      return [];
-    }
+    return topMoverItems;
   }
 
   let holdings: Holding[] = [];
@@ -47,7 +52,11 @@ async function getTickerItems(isAuthenticated: boolean): Promise<TickerItem[]> {
   const heldCodes = new Set(holdings.map((h) => h.stockCode));
   const holdingItems: TickerItem[] = holdings.map((h) => ({ code: h.stockCode, name: h.stockName, price: h.currentPrice, rate: h.evalGainRate }));
   const watchlistItems: TickerItem[] = watchlist.filter((w) => !heldCodes.has(w.code)).map((w) => ({ code: w.code, name: w.name, price: w.currentPrice, rate: stockRate(w) }));
-  return [...holdingItems, ...watchlistItems];
+
+  const shownCodes = new Set([...heldCodes, ...watchlistItems.map((w) => w.code)]);
+  const extraTopMovers = topMoverItems.filter((t) => !shownCodes.has(t.code));
+
+  return [...holdingItems, ...watchlistItems, ...extraTopMovers];
 }
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
