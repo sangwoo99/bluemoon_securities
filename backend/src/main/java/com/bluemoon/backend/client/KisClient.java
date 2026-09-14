@@ -138,6 +138,8 @@ public class KisClient {
     /**
      * 국내주식 등락률 순위(상승률순)를 조회한다. marketInputCode: "0001"(코스피) / "1001"(코스닥).
      * tr_id/파라미터는 모의투자 앱키로 직접 호출해 확인한 값(KIS 개발자센터 문서가 SPA라 정적으로 크롤링이 안 됨).
+     * fid_rank_sort_cls_code="0"으로 호출했을 때 실제로는 하락률 상위(내림 종목)가 반환되는 게 확인되어
+     * "1"(상승률순)로 정정함 — KIS 문서에 이 값의 상승/하락 방향이 명확히 안 나와 있어 실제 응답으로 검증.
      */
     public List<FluctuationRankItem> getTopFluctuationStocks(String marketInputCode, int count) {
         String token = getAccessToken();
@@ -152,7 +154,7 @@ public class KisClient {
                             .queryParam("fid_cond_mrkt_div_code", "J")
                             .queryParam("fid_cond_scr_div_code", "20170")
                             .queryParam("fid_input_iscd", marketInputCode)
-                            .queryParam("fid_rank_sort_cls_code", "0")
+                            .queryParam("fid_rank_sort_cls_code", "1")
                             .queryParam("fid_input_cnt_1", "0")
                             .queryParam("fid_prc_cls_code", "1")
                             .queryParam("fid_input_price_1", "")
