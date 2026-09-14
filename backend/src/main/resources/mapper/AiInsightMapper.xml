@@ -33,4 +33,9 @@
         FETCH FIRST 1 ROWS ONLY
     </select>
 
+    <select id="existsGeneratedAfter" resultType="boolean">
+        SELECT CASE WHEN EXISTS (SELECT 1 FROM ai_insights WHERE generated_at >= #{threshold}) THEN 1 ELSE 0 END
+        FROM DUAL
+    </select>
+
 </mapper>

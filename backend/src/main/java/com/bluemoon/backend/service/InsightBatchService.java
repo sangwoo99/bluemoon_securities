@@ -62,6 +62,15 @@ public class InsightBatchService {
     @Scheduled(cron = "0 0 8 * * *", zone = "Asia/Seoul")
     @Transactional
     public void generateDailyInsights() {
+        LocalDate today = LocalDate.now();
+
+        // 기동 시 트리거(onStartup)가 배포할 때마다 반복 실행되므로, 오늘 이미 생성된 게 있으면 건너뛴다.
+        // NewsData.io 무료 할당량(200 크레딧/일)이 재배포 몇 번 만에 소진되는 걸 막기 위한 가드.
+        if (aiInsightMapper.existsGeneratedAfter(today.atStartOfDay())) {
+            log.info("오늘 이미 AI 인사이트가 생성되어 배치를 건너뜁니다.");
+            return;
+        }
+
         Map<String, AiInsight> generatedByStock = new HashMap<>();
 
         for (Stock stock : stockMapper.findAll()) {
@@ -81,7 +90,6 @@ public class InsightBatchService {
         Map<String, Long> volumeByCode = topMoverMapper.findByRankTypeOrderByRank(RankType.VOLUME).stream()
                 .collect(Collectors.toMap(TopMover::getStockCode, tm -> tm.getVolume() != null ? tm.getVolume() : 0L, (a, b) -> a));
 
-        LocalDate today = LocalDate.now();
         for (Account account : accountMapper.findAll()) {
             if (dailyPickMapper.findByAccountIdAndPickDate(account.getId(), today).isPresent()) {
                 continue;
