@@ -12,6 +12,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
+import org.springframework.core.annotation.Order;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
@@ -39,8 +40,13 @@ public class MarketRankingBatchService {
     private final StockMapper stockMapper;
     private final TopMoverMapper topMoverMapper;
 
-    /** 배포 직후에도(장 마감/주말 포함) 목록이 비어있지 않도록 앱 기동 시 한 번 실행한다. */
+    /**
+     * 배포 직후에도(장 마감/주말 포함) 목록이 비어있지 않도록 앱 기동 시 한 번 실행한다.
+     * InsightBatchService.onStartup()이 거래량 랭킹(top_movers)을 참조해 "오늘의 추천 종목"을 뽑으므로,
+     * 반드시 이 리스너가 먼저 끝난 뒤에 실행돼야 한다 — @Order로 순서를 명시 (기본은 순서 보장이 안 됨).
+     */
     @EventListener(ApplicationReadyEvent.class)
+    @Order(1)
     public void onStartup() {
         updateTopMovers();
     }

@@ -15,6 +15,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
+import org.springframework.core.annotation.Order;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -45,8 +46,14 @@ public class InsightBatchService {
     private final TopMoverMapper topMoverMapper;
     private final InsightGenerationService insightGenerationService;
 
-    /** 배포 직후에도(다음날 08:00 전까지) AI_INSIGHTS가 비어있지 않도록 앱 기동 시 한 번 실행한다 — MarketRankingBatchService와 동일 패턴. */
+    /**
+     * 배포 직후에도(다음날 08:00 전까지) AI_INSIGHTS가 비어있지 않도록 앱 기동 시 한 번 실행한다 — MarketRankingBatchService와 동일 패턴.
+     * "오늘의 추천 종목"(DAILY_PICKS)을 뽑을 때 top_movers(거래량 랭킹)를 참조하므로, MarketRankingBatchService의
+     * onStartup()(@Order(1))이 먼저 끝난 뒤 실행되도록 @Order(2)로 명시. 순서가 안 맞으면 top_movers가 비어있어
+     * DAILY_PICKS가 하나도 안 만들어지고(AI_INSIGHTS 자체는 생성됨에도) 대시보드에 아무것도 안 뜨는 문제가 있었음.
+     */
     @EventListener(ApplicationReadyEvent.class)
+    @Order(2)
     public void onStartup() {
         generateDailyInsights();
     }
