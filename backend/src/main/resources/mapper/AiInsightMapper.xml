@@ -38,4 +38,14 @@
         FROM DUAL
     </select>
 
+    <select id="findLatestPerStock" resultMap="AiInsightResultMap">
+        SELECT a.id, a.stock_code, a.content, a.sources, a.generated_at
+        FROM ai_insights a
+        INNER JOIN (
+            SELECT stock_code, MAX(generated_at) AS max_generated_at
+            FROM ai_insights
+            GROUP BY stock_code
+        ) latest ON a.stock_code = latest.stock_code AND a.generated_at = latest.max_generated_at
+    </select>
+
 </mapper>

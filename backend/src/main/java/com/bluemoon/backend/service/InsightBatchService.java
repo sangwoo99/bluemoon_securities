@@ -23,7 +23,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -64,29 +63,35 @@ public class InsightBatchService {
     public void generateDailyInsights() {
         LocalDate today = LocalDate.now();
 
-        // 기동 시 트리거(onStartup)가 배포할 때마다 반복 실행되므로, 오늘 이미 생성된 게 있으면 건너뛴다.
-        // NewsData.io 무료 할당량(200 크레딧/일)이 재배포 몇 번 만에 소진되는 걸 막기 위한 가드.
+        // 기동 시 트리거(onStartup)가 배포할 때마다 반복 실행되므로, 오늘 이미 생성된 게 있으면 뉴스/LLM 호출은
+        // 건너뛴다 — NewsData.io 무료 할당량(200 크레딧/일)이 재배포 몇 번 만에 소진되는 걸 막기 위함.
+        // 단, "오늘의 추천 종목"(DAILY_PICKS) 배정은 생성을 건너뛴 경우에도 기존에 쌓인 인사이트로 계속 시도한다
+        // — 여기서 같이 return 해버리면 이미 인사이트가 있는데도 대시보드에 추천이 하나도 안 뜨는 문제가 생김.
         if (aiInsightMapper.existsGeneratedAfter(today.atStartOfDay())) {
-            log.info("오늘 이미 AI 인사이트가 생성되어 배치를 건너뜁니다.");
-            return;
-        }
-
-        Map<String, AiInsight> generatedByStock = new HashMap<>();
-
-        for (Stock stock : stockMapper.findAll()) {
-            Optional<InsightGenerationService.Result> result = insightGenerationService.generate(stock.getCode(), stock.getName());
-            if (result.isEmpty()) {
-                log.warn("AI 인사이트 생성 실패 — stockCode={}", stock.getCode());
-                continue;
+            log.info("오늘 이미 AI 인사이트가 생성되어 있어 생성 단계는 건너뜁니다.");
+        } else {
+            for (Stock stock : stockMapper.findAll()) {
+                Optional<InsightGenerationService.Result> result = insightGenerationService.generate(stock.getCode(), stock.getName());
+                if (result.isEmpty()) {
+                    log.warn("AI 인사이트 생성 실패 — stockCode={}", stock.getCode());
+                    continue;
+                }
+                aiInsightMapper.insert(new AiInsight(stock.getCode(), result.get().content(), result.get().sources()));
             }
-            AiInsight insight = new AiInsight(stock.getCode(), result.get().content(), result.get().sources());
-            aiInsightMapper.insert(insight);
-            generatedByStock.put(stock.getCode(), insight);
         }
 
-        // 계좌가 보유하지 않은, 인사이트가 있는 종목 중 거래량이 가장 많은 종목을 "새로 눈여겨볼 만한 종목"으로 추천한다.
-        // 거래량은 top_movers(VOLUME 랭킹) 캐시에서만 알 수 있어, 랭킹에 없는 종목은 0으로 취급해 후순위로 민다
-        // (거래량 랭킹에 없다고 후보에서 아예 제외하지는 않음 — 인사이트 존재 여부가 1차 조건).
+        assignDailyPicks(today);
+    }
+
+    /**
+     * 계좌가 보유하지 않은, 인사이트가 있는 종목 중 거래량이 가장 많은 종목을 "새로 눈여겨볼 만한 종목"으로 추천한다.
+     * 인사이트는 이번 실행에서 새로 생성했는지 여부와 무관하게 항상 "종목별 최신 인사이트"를 기준으로 삼는다.
+     * 거래량은 top_movers(VOLUME 랭킹) 캐시에서만 알 수 있어, 랭킹에 없는 종목은 0으로 취급해 후순위로 민다
+     * (거래량 랭킹에 없다고 후보에서 아예 제외하지는 않음 — 인사이트 존재 여부가 1차 조건).
+     */
+    private void assignDailyPicks(LocalDate today) {
+        Map<String, AiInsight> latestByStock = aiInsightMapper.findLatestPerStock().stream()
+                .collect(Collectors.toMap(AiInsight::getStockCode, insight -> insight));
         Map<String, Long> volumeByCode = topMoverMapper.findByRankTypeOrderByRank(RankType.VOLUME).stream()
                 .collect(Collectors.toMap(TopMover::getStockCode, tm -> tm.getVolume() != null ? tm.getVolume() : 0L, (a, b) -> a));
 
@@ -98,7 +103,7 @@ public class InsightBatchService {
                     .map(h -> h.getStockCode())
                     .collect(Collectors.toSet());
 
-            generatedByStock.values().stream()
+            latestByStock.values().stream()
                     .filter(insight -> !heldCodes.contains(insight.getStockCode()))
                     .max(Comparator.comparingLong(insight -> volumeByCode.getOrDefault(insight.getStockCode(), 0L)))
                     .ifPresent(insight -> dailyPickMapper.insert(new DailyPick(account.getId(), insight.getId(), today)));
