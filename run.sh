@@ -20,13 +20,13 @@ case "$CMD" in
   up|start|deploy)
     $COMPOSE $FILES up -d --build "$@"
     ;;
-  down|stop)
+  stop)
     $COMPOSE $FILES stop "$@"
     ;;
   restart)
     $COMPOSE $FILES restart "$@"
     ;;
-  del)
+  down)
     $COMPOSE $FILES down "$@"
     ;;
   ps|status)
@@ -36,11 +36,11 @@ case "$CMD" in
     $COMPOSE $FILES logs -f "$@"
     ;;
   *)
-    echo "사용법: $0 {up|down|restart|del|ps|logs} [서비스명]"
+    echo "사용법: $0 {up|stop|restart|down|ps|logs} [서비스명]"
     echo "  up      - 이미지 새로 빌드하고 백그라운드로 실행 (기본값, 인자 없으면 이걸 실행)"
-    echo "  down    - 컨테이너 중지 (삭제 안 함)"
+    echo "  stop    - 컨테이너 중지 (삭제 안 함)"
     echo "  restart - 컨테이너 재시작. 서비스명 생략 시 전체 재시작 (예: $0 restart backend)"
-    echo "  del     - 컨테이너 삭제"
+    echo "  down    - 컨테이너 삭제 (Docker 표준 docker compose down과 동일)"
     echo "  ps      - 컨테이너 상태 확인"
     echo "  logs    - 로그 확인, 서비스명 생략 시 전체 (예: $0 logs backend)"
     exit 1
