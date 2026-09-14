@@ -18,24 +18,26 @@ async function getTopMoverItems(): Promise<TickerItem[]> {
   }
 }
 
+async function safeGet<T>(path: string): Promise<T | null> {
+  try {
+    return await apiGet<T>(path);
+  } catch {
+    return null;
+  }
+}
+
 async function getTickerItems(isAuthenticated: boolean): Promise<TickerItem[]> {
-  const topMoverItems = await getTopMoverItems();
   if (!isAuthenticated) {
-    return topMoverItems;
+    return getTopMoverItems();
   }
 
-  let holdings: Holding[] = [];
-  let watchlist: StockDetail[] = [];
-  try {
-    holdings = (await apiGet<Holding[]>("/api/holdings")) ?? [];
-  } catch {
-    holdings = [];
-  }
-  try {
-    watchlist = (await apiGet<StockDetail[]>("/api/watchlist")) ?? [];
-  } catch {
-    watchlist = [];
-  }
+  const [topMoverItems, holdingsResult, watchlistResult] = await Promise.all([
+    getTopMoverItems(),
+    safeGet<Holding[]>("/api/holdings"),
+    safeGet<StockDetail[]>("/api/watchlist"),
+  ]);
+  const holdings = holdingsResult ?? [];
+  const watchlist = watchlistResult ?? [];
 
   const heldCodes = new Set(holdings.map((h) => h.stockCode));
   const holdingItems: TickerItem[] = holdings.map((h) => ({ code: h.stockCode, name: h.stockName, price: h.currentPrice, rate: h.evalGainRate }));
