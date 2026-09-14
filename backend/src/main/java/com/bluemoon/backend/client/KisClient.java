@@ -11,6 +11,8 @@ import org.springframework.web.reactive.function.client.WebClientResponseExcepti
 import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.LocalDate;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Optional;
@@ -18,8 +20,11 @@ import java.util.Optional;
 /**
  * 한국투자증권(KIS) Open API 클라이언트. 시세 조회 전용 — 주문 관련 엔드포인트는 절대 호출하지 않는다
  * (모의투자 앱키를 쓰더라도, 실전 앱키로 잘못 설정된 경우 실제 주문이 나갈 수 있음).
- * 요청 경로에서는 절대 호출하지 않고, 배치({@link com.bluemoon.backend.service.PriceUpdateBatchService},
+ * 원칙적으로 요청 경로에서는 호출하지 않고, 배치({@link com.bluemoon.backend.service.PriceUpdateBatchService},
  * {@link com.bluemoon.backend.service.PriceHistoryBackfillService})에서만 사용한다.
+ * 유일한 예외는 {@link #getIntradayPriceHistory(String)}(당일 분봉) — DB 배치 캐시 없이 이 메서드가 직접
+ * KIS를 호출하지만, 호출하는 쪽인 StockService에서 종목당 20분 Redis 캐시를 두고 있어 실제로는 20분에
+ * 최대 1번만 불린다(완전한 배치는 아니지만 매 요청마다 호출되는 것도 아님).
  */
 @Slf4j
 @Component
@@ -30,6 +35,7 @@ public class KisClient {
     private static final String FLUCTUATION_RANK_TR_ID = "FHPST01700000";
     private static final String VOLUME_RANK_TR_ID = "FHPST01710000";
     private static final String DAILY_PRICE_TR_ID = "FHKST03010100";
+    private static final String INTRADAY_PRICE_TR_ID = "FHKST03010200";
 
     private final WebClient webClient;
     private final StringRedisTemplate redisTemplate;
@@ -131,6 +137,57 @@ public class KisClient {
             return List.of();
         } catch (Exception e) {
             log.warn("KIS 기간별시세 조회 중 오류 — stockCode={}, error={}", stockCode, e.getMessage());
+            return List.of();
+        }
+    }
+
+    /**
+     * 당일 분봉(체결 시각별 가격)을 조회한다. 실제 응답 확인 결과 KIS는 조회 기준시각(FID_INPUT_HOUR_1) 이전
+     * 최근 30건까지만 준다(개장부터 전체가 아님) — 그래서 기준시각을 "지금"으로 넘겨 항상 "최근 30분 추이"를
+     * 보여주도록 한다(장마감 이후엔 자연스럽게 마감 직전 30분이 됨). 장애/키 미설정 시 빈 리스트.
+     */
+    public List<IntradayPriceItem> getIntradayPriceHistory(String stockCode) {
+        String token = getAccessToken();
+        if (token == null) {
+            return List.of();
+        }
+
+        String nowHourMinuteSecond = ZonedDateTime.now(ZoneId.of("Asia/Seoul")).format(DateTimeFormatter.ofPattern("HHmmss"));
+
+        try {
+            IntradayPriceResponse response = webClient.get()
+                    .uri(uriBuilder -> uriBuilder
+                            .path("/uapi/domestic-stock/v1/quotations/inquire-time-itemchartprice")
+                            .queryParam("FID_ETC_CLS_CODE", "")
+                            .queryParam("FID_COND_MRKT_DIV_CODE", "J")
+                            .queryParam("FID_INPUT_ISCD", stockCode)
+                            .queryParam("FID_INPUT_HOUR_1", nowHourMinuteSecond)
+                            .queryParam("FID_PW_DATA_INCU_YN", "Y")
+                            .build())
+                    .header("authorization", "Bearer " + token)
+                    .header("appkey", appKey)
+                    .header("appsecret", appSecret)
+                    .header("tr_id", INTRADAY_PRICE_TR_ID)
+                    .header("custtype", "P")
+                    .retrieve()
+                    .bodyToMono(IntradayPriceResponse.class)
+                    .timeout(Duration.ofSeconds(10))
+                    .block();
+
+            if (response == null || response.output2() == null || !"0".equals(response.rtCd())) {
+                log.warn("KIS 당일 분봉 조회 실패 — stockCode={}, msg={}", stockCode, response != null ? response.msg1() : "응답 없음");
+                return List.of();
+            }
+            return response.output2().stream()
+                    .filter(o -> o.time() != null && !o.time().isBlank())
+                    .map(o -> new IntradayPriceItem(o.time(), new BigDecimal(o.price())))
+                    .sorted(java.util.Comparator.comparing(IntradayPriceItem::time))
+                    .toList();
+        } catch (WebClientResponseException e) {
+            log.warn("KIS 당일 분봉 조회 중 오류 — stockCode={}, status={}, body={}", stockCode, e.getStatusCode(), e.getResponseBodyAsString());
+            return List.of();
+        } catch (Exception e) {
+            log.warn("KIS 당일 분봉 조회 중 오류 — stockCode={}, error={}", stockCode, e.getMessage());
             return List.of();
         }
     }
@@ -356,6 +413,23 @@ public class KisClient {
     private record DailyPriceOutput2(
             @JsonProperty("stck_bsop_date") String date,
             @JsonProperty("stck_clpr") String closePrice
+    ) {
+    }
+
+    /** time: "HHMMSS" 형식의 체결 시각 문자열. */
+    public record IntradayPriceItem(String time, BigDecimal price) {
+    }
+
+    private record IntradayPriceResponse(
+            @JsonProperty("rt_cd") String rtCd,
+            String msg1,
+            List<IntradayPriceOutput2> output2
+    ) {
+    }
+
+    private record IntradayPriceOutput2(
+            @JsonProperty("stck_cntg_hour") String time,
+            @JsonProperty("stck_prpr") String price
     ) {
     }
 }

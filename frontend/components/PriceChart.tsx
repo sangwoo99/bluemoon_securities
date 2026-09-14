@@ -43,13 +43,14 @@ export default function PriceChart({ data, up }: { data: PricePoint[]; up: boole
     y: PAD_TOP + (i / Y_TICKS) * plotHeight,
   }));
 
+  // date 필드는 호출하는 쪽에서 이미 화면에 보여줄 형태(예: "09-01", "09:30")로 가공해서 넘겨준다.
   const xTickCount = Math.min(6, data.length);
   const xTicks =
     xTickCount <= 1
-      ? [{ label: data[0]?.date.slice(5) ?? "" }]
+      ? [{ label: data[0]?.date ?? "" }]
       : Array.from({ length: xTickCount }, (_, i) => {
           const idx = Math.round((i * (data.length - 1)) / (xTickCount - 1));
-          return { label: data[idx]?.date.slice(5) ?? "" };
+          return { label: data[idx]?.date ?? "" };
         });
 
   return (

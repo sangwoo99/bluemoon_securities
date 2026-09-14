@@ -46,6 +46,12 @@ export interface PricePoint {
   price: number;
 }
 
+/** time: "HHMMSS" 형식 문자열 (KIS 응답 그대로). */
+export interface IntradayPricePoint {
+  time: string;
+  price: number;
+}
+
 export type OrderSide = "BUY" | "SELL";
 export type OrderType = "MARKET" | "LIMIT";
 

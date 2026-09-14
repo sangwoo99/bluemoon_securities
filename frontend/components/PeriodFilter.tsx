@@ -3,6 +3,7 @@
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 
 const PERIODS: { value: string; label: string }[] = [
+  { value: "1d", label: "당일" },
   { value: "1w", label: "1주" },
   { value: "1m", label: "1개월" },
   { value: "3m", label: "3개월" },

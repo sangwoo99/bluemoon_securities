@@ -7,7 +7,7 @@ import NewsSourcesCard from "@/components/NewsSourcesCard";
 import WatchlistToggleButton from "@/components/WatchlistToggleButton";
 import { apiGet, ApiError } from "@/lib/api";
 import { fmtPct } from "@/lib/format";
-import type { Insight, PricePoint, StockDetail, Trade } from "@/lib/types";
+import type { Insight, IntradayPricePoint, PricePoint, StockDetail, Trade } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -17,6 +17,7 @@ const PERIOD_DAYS: Record<string, number> = {
   "3m": 90,
   "1y": 365,
 };
+const VALID_PERIODS = new Set(["1d", ...Object.keys(PERIOD_DAYS)]);
 
 async function safeGet<T>(path: string): Promise<T | null> {
   try {
@@ -24,6 +25,11 @@ async function safeGet<T>(path: string): Promise<T | null> {
   } catch {
     return null;
   }
+}
+
+/** "HHMMSS" -> "HH:MM" */
+function formatIntradayLabel(time: string): string {
+  return time.length >= 4 ? `${time.slice(0, 2)}:${time.slice(2, 4)}` : time;
 }
 
 export default async function StockDetailPage({
@@ -35,8 +41,8 @@ export default async function StockDetailPage({
 }) {
   const { code } = await params;
   const resolvedSearchParams = await searchParams;
-  const period = PERIOD_DAYS[resolvedSearchParams.period ?? ""] ? resolvedSearchParams.period! : "1m";
-  const days = PERIOD_DAYS[period];
+  const period = VALID_PERIODS.has(resolvedSearchParams.period ?? "") ? resolvedSearchParams.period! : "1m";
+  const isIntraday = period === "1d";
 
   let stock: StockDetail | null;
   try {
@@ -49,12 +55,17 @@ export default async function StockDetailPage({
   }
   if (!stock) notFound();
 
-  const [priceHistory, trades, insight, watchlist] = await Promise.all([
-    safeGet<PricePoint[]>(`/api/stocks/${code}/price-history?days=${days}`),
+  const [priceHistoryRaw, intradayRaw, trades, insight, watchlist] = await Promise.all([
+    isIntraday ? Promise.resolve(null) : safeGet<PricePoint[]>(`/api/stocks/${code}/price-history?days=${PERIOD_DAYS[period]}`),
+    isIntraday ? safeGet<IntradayPricePoint[]>(`/api/stocks/${code}/intraday`) : Promise.resolve(null),
     safeGet<Trade[]>(`/api/trades/${code}`),
     safeGet<Insight>(`/api/insights/${code}`),
     safeGet<StockDetail[]>("/api/watchlist"),
   ]);
+
+  const priceHistory: PricePoint[] = isIntraday
+    ? (intradayRaw ?? []).map((p) => ({ date: formatIntradayLabel(p.time), price: p.price }))
+    : (priceHistoryRaw ?? []).map((p) => ({ date: p.date.slice(5), price: p.price }));
 
   const isWatched = (watchlist ?? []).some((w) => w.code === code);
 
@@ -102,7 +113,7 @@ export default async function StockDetailPage({
             <h3>시세 추이</h3>
           </div>
           <PeriodFilter current={period} />
-          <PriceChart data={priceHistory ?? []} up={up} />
+          <PriceChart data={priceHistory} up={up} />
         </div>
 
         <AiInsightCard insight={insight} showNews={false} />

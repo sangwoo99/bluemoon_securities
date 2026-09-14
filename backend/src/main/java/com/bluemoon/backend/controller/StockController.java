@@ -1,6 +1,7 @@
 package com.bluemoon.backend.controller;
 
 import com.bluemoon.backend.common.ApiResponse;
+import com.bluemoon.backend.dto.response.IntradayPricePointResponse;
 import com.bluemoon.backend.dto.response.PricePointResponse;
 import com.bluemoon.backend.dto.response.StockResponse;
 import com.bluemoon.backend.dto.response.TradeResponse;
@@ -38,6 +39,11 @@ public class StockController {
     @GetMapping("/api/stocks/{code}/price-history")
     public ApiResponse<List<PricePointResponse>> getPriceHistory(@PathVariable String code, @RequestParam(defaultValue = "30") int days) {
         return ApiResponse.ok(stockService.getPriceHistory(code, days));
+    }
+
+    @GetMapping("/api/stocks/{code}/intraday")
+    public ApiResponse<List<IntradayPricePointResponse>> getIntradayPriceHistory(@PathVariable String code) {
+        return ApiResponse.ok(stockService.getIntradayPriceHistory(code));
     }
 
     @GetMapping("/api/trades/{code}")
