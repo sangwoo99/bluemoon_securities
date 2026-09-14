@@ -67,8 +67,11 @@ services:
       - backend
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      # sslip.io + certbot(--standalone)으로 발급한 인증서. 갱신은 호스트에서 certbot renew가 처리.
+      - /etc/letsencrypt:/etc/letsencrypt:ro
     ports:
       - "80:80"
+      - "443:443"
 
 volumes:
   redis_data:
