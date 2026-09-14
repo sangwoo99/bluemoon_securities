@@ -5,6 +5,7 @@ import com.bluemoon.backend.domain.insight.AiInsight;
 import com.bluemoon.backend.domain.insight.DailyPick;
 import com.bluemoon.backend.domain.stock.RankType;
 import com.bluemoon.backend.domain.stock.Stock;
+import com.bluemoon.backend.domain.stock.TopMover;
 import com.bluemoon.backend.mapper.AccountMapper;
 import com.bluemoon.backend.mapper.AiInsightMapper;
 import com.bluemoon.backend.mapper.DailyPickMapper;
@@ -21,10 +22,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.util.Comparator;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -75,8 +75,11 @@ public class InsightBatchService {
             generatedByStock.put(stock.getCode(), insight);
         }
 
-        // 계좌가 보유하지 않은 종목 중, 거래량 TOP 랭킹 순으로 훑어 인사이트가 만들어진 첫 종목을 "새로 눈여겨볼 만한 종목"으로 추천한다.
-        List<String> volumeRankedCodes = topMoverMapper.findStockCodesByRankTypeOrderByRank(RankType.VOLUME);
+        // 계좌가 보유하지 않은, 인사이트가 있는 종목 중 거래량이 가장 많은 종목을 "새로 눈여겨볼 만한 종목"으로 추천한다.
+        // 거래량은 top_movers(VOLUME 랭킹) 캐시에서만 알 수 있어, 랭킹에 없는 종목은 0으로 취급해 후순위로 민다
+        // (거래량 랭킹에 없다고 후보에서 아예 제외하지는 않음 — 인사이트 존재 여부가 1차 조건).
+        Map<String, Long> volumeByCode = topMoverMapper.findByRankTypeOrderByRank(RankType.VOLUME).stream()
+                .collect(Collectors.toMap(TopMover::getStockCode, tm -> tm.getVolume() != null ? tm.getVolume() : 0L, (a, b) -> a));
 
         LocalDate today = LocalDate.now();
         for (Account account : accountMapper.findAll()) {
@@ -87,11 +90,9 @@ public class InsightBatchService {
                     .map(h -> h.getStockCode())
                     .collect(Collectors.toSet());
 
-            volumeRankedCodes.stream()
-                    .filter(code -> !heldCodes.contains(code))
-                    .map(generatedByStock::get)
-                    .filter(Objects::nonNull)
-                    .findFirst()
+            generatedByStock.values().stream()
+                    .filter(insight -> !heldCodes.contains(insight.getStockCode()))
+                    .max(Comparator.comparingLong(insight -> volumeByCode.getOrDefault(insight.getStockCode(), 0L)))
                     .ifPresent(insight -> dailyPickMapper.insert(new DailyPick(account.getId(), insight.getId(), today)));
         }
     }

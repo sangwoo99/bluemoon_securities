@@ -14,7 +14,5 @@ public interface TopMoverMapper {
 
     void deleteByRankType(@Param("rankType") RankType rankType);
 
-    List<String> findStockCodesByRankTypeOrderByRank(@Param("rankType") RankType rankType);
-
     List<TopMover> findByRankTypeOrderByRank(@Param("rankType") RankType rankType);
 }

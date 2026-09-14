@@ -22,13 +22,6 @@
         WHERE rank_type = #{rankType}
     </delete>
 
-    <select id="findStockCodesByRankTypeOrderByRank" resultType="string">
-        SELECT stock_code
-        FROM top_movers
-        WHERE rank_type = #{rankType}
-        ORDER BY rank_no ASC
-    </select>
-
     <select id="findByRankTypeOrderByRank" resultMap="TopMoverResultMap">
         SELECT id, stock_code, rank_type, rank_no, change_rate, volume, captured_at
         FROM top_movers
