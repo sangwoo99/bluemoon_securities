@@ -69,7 +69,14 @@ export default function AssetTrendChart({ data }: { data: TrendPoint[] }) {
             </text>
           ))}
           {xTicks.map((t, i) => (
-            <text key={i} x={t.x} y={height - 4} textAnchor="middle" fontSize={10} fill="#565e70">
+            <text
+              key={i}
+              x={t.x}
+              y={height - 4}
+              textAnchor={i === 0 ? "start" : i === xTicks.length - 1 ? "end" : "middle"}
+              fontSize={10}
+              fill="#565e70"
+            >
               {t.label}
             </text>
           ))}
