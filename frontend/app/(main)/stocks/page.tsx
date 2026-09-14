@@ -52,7 +52,14 @@ export default async function StocksIndexPage({ searchParams }: { searchParams: 
   const sortedAllStocks = [...allStocks].sort((a, b) => a.name.localeCompare(b.name, "ko"));
   const totalPages = Math.max(1, Math.ceil(sortedAllStocks.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
-  const displayStocks = rank === "all" ? sortedAllStocks.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE) : topMovers;
+
+  const rateOf = (s: StockDetail) => (s.prevClose !== 0 ? ((s.currentPrice - s.prevClose) / s.prevClose) * 100 : 0);
+  const sortedTopMovers =
+    rank === "volume"
+      ? [...topMovers].sort((a, b) => (b.volume ?? 0) - (a.volume ?? 0))
+      : [...topMovers].sort((a, b) => rateOf(b) - rateOf(a));
+
+  const displayStocks = rank === "all" ? sortedAllStocks.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE) : sortedTopMovers;
 
   return (
     <section>
@@ -74,6 +81,7 @@ export default async function StocksIndexPage({ searchParams }: { searchParams: 
                 <th>시장</th>
                 <th>현재가</th>
                 <th>전일대비</th>
+                {rank === "volume" && <th>거래량</th>}
               </tr>
             </thead>
             <tbody>
@@ -97,6 +105,7 @@ export default async function StocksIndexPage({ searchParams }: { searchParams: 
                     <td className={gainClass(diff)}>
                       {gainArrow(diff)} {fmtSignedWon(diff)} ({fmtPct(rate)})
                     </td>
+                    {rank === "volume" && <td>{s.volume != null ? `${s.volume.toLocaleString()}주` : "-"}</td>}
                   </tr>
                 );
               })}

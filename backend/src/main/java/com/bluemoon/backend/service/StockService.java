@@ -4,6 +4,7 @@ import com.bluemoon.backend.common.exception.ApiException;
 import com.bluemoon.backend.common.exception.ErrorCode;
 import com.bluemoon.backend.domain.stock.RankType;
 import com.bluemoon.backend.domain.stock.Stock;
+import com.bluemoon.backend.domain.stock.TopMover;
 import com.bluemoon.backend.dto.response.PricePointResponse;
 import com.bluemoon.backend.dto.response.StockResponse;
 import com.bluemoon.backend.mapper.PriceSnapshotMapper;
@@ -16,7 +17,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -49,21 +49,25 @@ public class StockService {
             throw new ApiException(ErrorCode.VALIDATION_ERROR, "type은 FLUCTUATION 또는 VOLUME이어야 합니다.");
         }
 
-        List<String> codes = topMoverMapper.findStockCodesByRankTypeOrderByRank(type);
-        if (codes.isEmpty()) {
+        List<TopMover> rankedMovers = topMoverMapper.findByRankTypeOrderByRank(type);
+        if (rankedMovers.isEmpty()) {
             return List.of();
         }
+        List<String> codes = rankedMovers.stream().map(TopMover::getStockCode).toList();
         Map<String, Stock> byCode = stockMapper.findAllByCodes(codes).stream()
                 .collect(Collectors.toMap(Stock::getCode, Function.identity()));
-        return codes.stream()
-                .map(byCode::get)
-                .filter(Objects::nonNull)
-                .map(this::toResponse)
+        return rankedMovers.stream()
+                .filter(m -> byCode.containsKey(m.getStockCode()))
+                .map(m -> toResponse(byCode.get(m.getStockCode()), m.getVolume()))
                 .toList();
     }
 
     private StockResponse toResponse(Stock stock) {
         return new StockResponse(stock.getCode(), stock.getName(), stock.getMarket(), stock.getCurrentPrice(), stock.getPrevClose());
+    }
+
+    private StockResponse toResponse(Stock stock, Long volume) {
+        return new StockResponse(stock.getCode(), stock.getName(), stock.getMarket(), stock.getCurrentPrice(), stock.getPrevClose(), volume);
     }
 
     @Transactional(readOnly = true)

@@ -38,6 +38,7 @@ export interface StockDetail {
   market: "KOSPI" | "KOSDAQ";
   currentPrice: number;
   prevClose: number;
+  volume?: number | null;
 }
 
 export interface PricePoint {
