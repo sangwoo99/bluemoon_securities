@@ -90,23 +90,44 @@ public class InsightBatchService {
      * (거래량 랭킹에 없다고 후보에서 아예 제외하지는 않음 — 인사이트 존재 여부가 1차 조건).
      */
     private void assignDailyPicks(LocalDate today) {
-        Map<String, AiInsight> latestByStock = aiInsightMapper.findLatestPerStock().stream()
-                .collect(Collectors.toMap(AiInsight::getStockCode, insight -> insight));
-        Map<String, Long> volumeByCode = topMoverMapper.findByRankTypeOrderByRank(RankType.VOLUME).stream()
-                .collect(Collectors.toMap(TopMover::getStockCode, tm -> tm.getVolume() != null ? tm.getVolume() : 0L, (a, b) -> a));
+        Map<String, AiInsight> latestByStock = latestInsightByStock();
+        Map<String, Long> volumeByCode = volumeByStockCode();
 
         for (Account account : accountMapper.findAll()) {
-            if (dailyPickMapper.findByAccountIdAndPickDate(account.getId(), today).isPresent()) {
-                continue;
-            }
-            Set<String> heldCodes = holdingMapper.findByAccountIdAndQuantityGreaterThan(account.getId(), 0L).stream()
-                    .map(h -> h.getStockCode())
-                    .collect(Collectors.toSet());
-
-            latestByStock.values().stream()
-                    .filter(insight -> !heldCodes.contains(insight.getStockCode()))
-                    .max(Comparator.comparingLong(insight -> volumeByCode.getOrDefault(insight.getStockCode(), 0L)))
-                    .ifPresent(insight -> dailyPickMapper.insert(new DailyPick(account.getId(), insight.getId(), today)));
+            assignPickIfMissing(account.getId(), today, latestByStock, volumeByCode);
         }
+    }
+
+    /**
+     * 방금 가입한 계좌에 오늘의 추천 종목을 바로 배정한다. 뉴스/LLM을 호출하는 게 아니라 이미 캐시된
+     * AI_INSIGHTS/top_movers를 조회만 하므로 요청 경로(회원가입)에서 호출해도 CLAUDE.md 규칙에 어긋나지 않는다
+     * — 그렇게 안 하면 다음 배치(재배포 또는 다음날 08:00)까지 새 계정은 대시보드에 아무 추천도 안 뜸.
+     */
+    public void assignPickForNewAccount(Long accountId) {
+        assignPickIfMissing(accountId, LocalDate.now(), latestInsightByStock(), volumeByStockCode());
+    }
+
+    private void assignPickIfMissing(Long accountId, LocalDate today, Map<String, AiInsight> latestByStock, Map<String, Long> volumeByCode) {
+        if (dailyPickMapper.findByAccountIdAndPickDate(accountId, today).isPresent()) {
+            return;
+        }
+        Set<String> heldCodes = holdingMapper.findByAccountIdAndQuantityGreaterThan(accountId, 0L).stream()
+                .map(h -> h.getStockCode())
+                .collect(Collectors.toSet());
+
+        latestByStock.values().stream()
+                .filter(insight -> !heldCodes.contains(insight.getStockCode()))
+                .max(Comparator.comparingLong(insight -> volumeByCode.getOrDefault(insight.getStockCode(), 0L)))
+                .ifPresent(insight -> dailyPickMapper.insert(new DailyPick(accountId, insight.getId(), today)));
+    }
+
+    private Map<String, AiInsight> latestInsightByStock() {
+        return aiInsightMapper.findLatestPerStock().stream()
+                .collect(Collectors.toMap(AiInsight::getStockCode, insight -> insight));
+    }
+
+    private Map<String, Long> volumeByStockCode() {
+        return topMoverMapper.findByRankTypeOrderByRank(RankType.VOLUME).stream()
+                .collect(Collectors.toMap(TopMover::getStockCode, tm -> tm.getVolume() != null ? tm.getVolume() : 0L, (a, b) -> a));
     }
 }

@@ -27,6 +27,7 @@ public class AuthService {
     private final AccountMapper accountMapper;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
+    private final InsightBatchService insightBatchService;
 
     @Value("${app.seed-cash-balance}")
     private BigDecimal seedCashBalance;
@@ -42,6 +43,10 @@ public class AuthService {
 
         Account account = new Account(user.getId(), seedCashBalance);
         accountMapper.insert(account);
+
+        // 다음 배치(재배포 또는 다음날 08:00)까지 기다리지 않고 가입 직후 바로 "오늘의 추천 종목"을 배정한다.
+        // LLM/뉴스 호출 없이 기존 캐시(AI_INSIGHTS, top_movers)만 조회하므로 요청 경로 금지 규칙과 무관하다.
+        insightBatchService.assignPickForNewAccount(account.getId());
 
         return new SignupResponse(user.getId(), account.getId());
     }
