@@ -13,6 +13,8 @@ import com.bluemoon.backend.mapper.StockMapper;
 import com.bluemoon.backend.mapper.TopMoverMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -42,6 +44,12 @@ public class InsightBatchService {
     private final DailyPickMapper dailyPickMapper;
     private final TopMoverMapper topMoverMapper;
     private final InsightGenerationService insightGenerationService;
+
+    /** 배포 직후에도(다음날 08:00 전까지) AI_INSIGHTS가 비어있지 않도록 앱 기동 시 한 번 실행한다 — MarketRankingBatchService와 동일 패턴. */
+    @EventListener(ApplicationReadyEvent.class)
+    public void onStartup() {
+        generateDailyInsights();
+    }
 
     /** 매일 08:00 KST에 실행. */
     @Scheduled(cron = "0 0 8 * * *", zone = "Asia/Seoul")
