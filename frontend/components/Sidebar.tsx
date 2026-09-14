@@ -39,8 +39,6 @@ export default function Sidebar() {
             </Link>
           );
         })}
-      </nav>
-      <div className="sidebar-foot">
         <a
           href="https://github.com/sangwoo99/bluemoon_securities"
           target="_blank"
@@ -52,13 +50,13 @@ export default function Sidebar() {
           </svg>
           GitHub 저장소
         </a>
-        <div style={{ marginTop: 10 }}>
-          모의투자 계좌
-          <div style={{ marginTop: 6 }}>
-            <button type="button" className="sidebar-logout" onClick={handleLogout}>
-              로그아웃
-            </button>
-          </div>
+      </nav>
+      <div className="sidebar-foot">
+        모의투자 계좌
+        <div style={{ marginTop: 6 }}>
+          <button type="button" className="sidebar-logout" onClick={handleLogout}>
+            로그아웃
+          </button>
         </div>
       </div>
     </aside>

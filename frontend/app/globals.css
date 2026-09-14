@@ -123,6 +123,7 @@ nav { display: flex; flex-direction: column; gap: 2px; }
   justify-content: center;
   gap: 8px;
   width: 100%;
+  margin-top: 12px;
   padding: 9px 10px;
   border-radius: 8px;
   background: var(--accent);
