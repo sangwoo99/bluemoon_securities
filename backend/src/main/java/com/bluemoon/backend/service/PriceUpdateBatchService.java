@@ -8,6 +8,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 /**
@@ -39,8 +40,9 @@ public class PriceUpdateBatchService {
         for (int i = 0; i < stocks.size(); i++) {
             Stock stock = stocks.get(i);
             kisClient.getCurrentPrice(stock.getCode()).ifPresentOrElse(
-                    price -> {
-                        stock.updatePrice(price);
+                    item -> {
+                        BigDecimal prevClose = Stock.estimatePrevClose(item.currentPrice(), item.changeRatePercent());
+                        stock.updatePrice(item.currentPrice(), prevClose);
                         stockMapper.update(stock);
                     },
                     () -> log.warn("시세 갱신 건너뜀(조회 실패) — stockCode={}", stock.getCode())

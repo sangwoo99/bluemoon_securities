@@ -17,7 +17,6 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.util.List;
 
 /**
@@ -94,19 +93,14 @@ public class MarketRankingBatchService {
     }
 
     private void upsertStock(String code, String name, String market, BigDecimal currentPrice, BigDecimal changeRatePercent) {
+        BigDecimal prevClose = Stock.estimatePrevClose(currentPrice, changeRatePercent);
         stockMapper.findByCode(code).ifPresentOrElse(
                 stock -> {
-                    stock.updatePrice(currentPrice);
+                    stock.updatePrice(currentPrice, prevClose);
                     stockMapper.update(stock);
                 },
-                () -> stockMapper.insert(Stock.seed(code, name, market, currentPrice, estimatePrevClose(currentPrice, changeRatePercent)))
+                () -> stockMapper.insert(Stock.seed(code, name, market, currentPrice, prevClose))
         );
-    }
-
-    /** 순위 API들은 전일종가를 직접 주지 않아, 현재가와 등락률(%)로 역산한다. */
-    private BigDecimal estimatePrevClose(BigDecimal currentPrice, BigDecimal changeRatePercent) {
-        BigDecimal rate = changeRatePercent.divide(BigDecimal.valueOf(100), 6, RoundingMode.HALF_UP);
-        return currentPrice.divide(BigDecimal.ONE.add(rate), 2, RoundingMode.HALF_UP);
     }
 
     private void sleep(long millis) {

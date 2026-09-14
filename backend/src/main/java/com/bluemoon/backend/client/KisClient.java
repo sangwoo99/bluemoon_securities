@@ -54,8 +54,12 @@ public class KisClient {
         this.appSecret = appSecret;
     }
 
-    /** 종목의 현재가를 조회한다. 키 미설정/장애 시 빈 값을 반환한다 (배치가 나머지 종목을 계속 처리할 수 있도록). */
-    public Optional<BigDecimal> getCurrentPrice(String stockCode) {
+    /**
+     * 종목의 현재가와 전일대비율을 조회한다. 전일대비율(prdy_ctrt)을 같이 받아와야 prevClose를
+     * 역산할 수 있다 — 현재가만 받으면 폴링 때마다 prevClose를 "직전 폴링 가격"으로 잘못 갱신하게 된다.
+     * 키 미설정/장애 시 빈 값을 반환한다 (배치가 나머지 종목을 계속 처리할 수 있도록).
+     */
+    public Optional<CurrentPriceItem> getCurrentPrice(String stockCode) {
         String token = getAccessToken();
         if (token == null) {
             return Optional.empty();
@@ -82,7 +86,10 @@ public class KisClient {
                 log.warn("KIS 시세 조회 실패 — stockCode={}, msg={}", stockCode, response != null ? response.msg1() : "응답 없음");
                 return Optional.empty();
             }
-            return Optional.of(new BigDecimal(response.output().currentPrice()));
+            return Optional.of(new CurrentPriceItem(
+                    new BigDecimal(response.output().currentPrice()),
+                    new BigDecimal(response.output().changeRatePercent())
+            ));
         } catch (WebClientResponseException e) {
             log.warn("KIS 시세 조회 중 오류 — stockCode={}, status={}, body={}", stockCode, e.getStatusCode(), e.getResponseBodyAsString());
             return Optional.empty();
@@ -195,8 +202,9 @@ public class KisClient {
     /**
      * 국내주식 등락률 순위(상승률순)를 조회한다. marketInputCode: "0001"(코스피) / "1001"(코스닥).
      * tr_id/파라미터는 모의투자 앱키로 직접 호출해 확인한 값(KIS 개발자센터 문서가 SPA라 정적으로 크롤링이 안 됨).
-     * fid_rank_sort_cls_code="0"으로 호출했을 때 실제로는 하락률 상위(내림 종목)가 반환되는 게 확인되어
-     * "1"(상승률순)로 정정함 — KIS 문서에 이 값의 상승/하락 방향이 명확히 안 나와 있어 실제 응답으로 검증.
+     * fid_rank_sort_cls_code="0"이 상승률순, "1"이 하락률순이다 — 과거에 이 둘을 반대로 착각해 "1"로 잘못
+     * 정정했던 적이 있었는데(그래서 등락률 TOP10에 실제로는 하락률 상위 종목들이 담겼었다), 실제 응답을
+     * 다시 검증해 "0"으로 재정정함.
      */
     public List<FluctuationRankItem> getTopFluctuationStocks(String marketInputCode, int count) {
         String token = getAccessToken();
@@ -211,7 +219,7 @@ public class KisClient {
                             .queryParam("fid_cond_mrkt_div_code", "J")
                             .queryParam("fid_cond_scr_div_code", "20170")
                             .queryParam("fid_input_iscd", marketInputCode)
-                            .queryParam("fid_rank_sort_cls_code", "1")
+                            .queryParam("fid_rank_sort_cls_code", "0")
                             .queryParam("fid_input_cnt_1", "0")
                             .queryParam("fid_prc_cls_code", "1")
                             .queryParam("fid_input_price_1", "")
@@ -358,8 +366,12 @@ public class KisClient {
     }
 
     private record PriceOutput(
-            @JsonProperty("stck_prpr") String currentPrice
+            @JsonProperty("stck_prpr") String currentPrice,
+            @JsonProperty("prdy_ctrt") String changeRatePercent
     ) {
+    }
+
+    public record CurrentPriceItem(BigDecimal currentPrice, BigDecimal changeRatePercent) {
     }
 
     public record FluctuationRankItem(String code, String name, BigDecimal currentPrice, BigDecimal changeRatePercent) {

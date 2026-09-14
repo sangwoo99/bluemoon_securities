@@ -65,7 +65,7 @@ class OrderServiceTest {
         if (stock == null) {
             stockMapper.insert(Stock.seed(stockCode, "삼성전자", "KOSPI", BigDecimal.valueOf(73_800), BigDecimal.valueOf(73_000)));
         } else {
-            stock.updatePrice(BigDecimal.valueOf(73_800));
+            stock.updatePrice(BigDecimal.valueOf(73_800), BigDecimal.valueOf(73_000));
             stockMapper.update(stock);
         }
     }
@@ -175,7 +175,7 @@ class OrderServiceTest {
 
         // 시세가 지정가 이하로 내려오면 다음 배치에서 체결되어야 한다.
         Stock stock = stockMapper.findByCode(stockCode).orElseThrow();
-        stock.updatePrice(BigDecimal.valueOf(65_000));
+        stock.updatePrice(BigDecimal.valueOf(65_000), stock.getPrevClose());
         stockMapper.update(stock);
 
         orderMatchingBatchService.matchPendingOrders();
