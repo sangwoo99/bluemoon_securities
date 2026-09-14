@@ -23,7 +23,7 @@ import java.util.Optional;
  * 원칙적으로 요청 경로에서는 호출하지 않고, 배치({@link com.bluemoon.backend.service.PriceUpdateBatchService},
  * {@link com.bluemoon.backend.service.PriceHistoryBackfillService})에서만 사용한다.
  * 유일한 예외는 {@link #getIntradayPriceHistory(String)}(당일 분봉) — DB 배치 캐시 없이 이 메서드가 직접
- * KIS를 호출하지만, 호출하는 쪽인 StockService에서 종목당 20분 Redis 캐시를 두고 있어 실제로는 20분에
+ * KIS를 호출하지만, 호출하는 쪽인 StockService에서 종목당 30분 Redis 캐시를 두고 있어 실제로는 30분에
  * 최대 1번만 불린다(완전한 배치는 아니지만 매 요청마다 호출되는 것도 아님).
  */
 @Slf4j

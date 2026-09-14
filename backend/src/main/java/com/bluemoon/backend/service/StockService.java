@@ -32,8 +32,8 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class StockService {
 
-    /** "당일" 탭을 열 때마다 KIS를 부르지 않도록, 종목당 20분에 한 번만 실제로 조회하고 그 사이엔 Redis 캐시를 재사용한다. */
-    private static final Duration INTRADAY_CACHE_TTL = Duration.ofMinutes(20);
+    /** "당일" 탭을 열 때마다 KIS를 부르지 않도록, 종목당 30분에 한 번만 실제로 조회하고 그 사이엔 Redis 캐시를 재사용한다. */
+    private static final Duration INTRADAY_CACHE_TTL = Duration.ofMinutes(30);
 
     private final StockMapper stockMapper;
     private final PriceSnapshotMapper priceSnapshotMapper;
@@ -98,8 +98,8 @@ public class StockService {
 
     /**
      * 당일 분봉 시세. price-history(price_snapshots, 일별 배치 캐시)와 달리 DB 캐시가 없어 KIS를 직접 호출해야
-     * 하지만, 요청마다 매번 부르면 트래픽이 늘 때 KIS 호출 빈도 제한에 걸리기 쉬워 Redis에 종목당 20분 캐시를 둔다.
-     * 즉 같은 종목을 여러 사람이 20분 안에 반복 조회해도 KIS는 최대 20분에 한 번만 불린다.
+     * 하지만, 요청마다 매번 부르면 트래픽이 늘 때 KIS 호출 빈도 제한에 걸리기 쉬워 Redis에 종목당 30분 캐시를 둔다.
+     * 즉 같은 종목을 여러 사람이 30분 안에 반복 조회해도 KIS는 최대 30분에 한 번만 불린다.
      */
     public List<IntradayPricePointResponse> getIntradayPriceHistory(String code) {
         findStock(code); // 존재 검증
