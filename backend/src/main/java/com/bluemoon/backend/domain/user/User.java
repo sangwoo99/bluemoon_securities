@@ -22,4 +22,8 @@ public class User {
         this.name = name;
         this.createdAt = LocalDateTime.now();
     }
+
+    public void changePassword(String newPasswordHash) {
+        this.passwordHash = newPasswordHash;
+    }
 }

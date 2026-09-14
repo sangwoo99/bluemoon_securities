@@ -1,5 +1,6 @@
 import { apiGet } from "@/lib/api";
 import type { UserProfile } from "@/lib/types";
+import ChangePasswordForm from "@/components/ChangePasswordForm";
 
 export const dynamic = "force-dynamic";
 
@@ -52,6 +53,8 @@ export default async function MyPage() {
       ) : (
         <div className="empty-state">프로필 정보를 불러올 수 없습니다.</div>
       )}
+
+      <ChangePasswordForm />
     </section>
   );
 }

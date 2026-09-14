@@ -101,3 +101,21 @@ CREATE TABLE daily_picks (
     pick_date   DATE    NOT NULL,
     CONSTRAINT uq_daily_picks_account_date UNIQUE (account_id, pick_date)
 );
+
+CREATE TABLE watchlists (
+    id          BIGINT      GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    account_id  BIGINT      NOT NULL REFERENCES accounts (id),
+    stock_code  VARCHAR(6)  NOT NULL REFERENCES stocks (code),
+    created_at  TIMESTAMP   NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT uq_watchlists_account_stock UNIQUE (account_id, stock_code)
+);
+
+CREATE TABLE top_movers (
+    id           BIGINT        GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    stock_code   VARCHAR(6)    NOT NULL REFERENCES stocks (code),
+    rank_type    VARCHAR(12)   DEFAULT 'FLUCTUATION' NOT NULL,
+    rank_no      INT           NOT NULL,
+    change_rate  DECIMAL(6, 2) NOT NULL,
+    volume       BIGINT,
+    captured_at  TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP
+);

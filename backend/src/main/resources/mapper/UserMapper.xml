@@ -32,4 +32,10 @@
         FROM DUAL
     </select>
 
+    <update id="update">
+        UPDATE users
+        SET password_hash = #{passwordHash}
+        WHERE id = #{id}
+    </update>
+
 </mapper>
