@@ -22,4 +22,9 @@
         ORDER BY snapshot_date ASC
     </select>
 
+    <select id="existsBySnapshotDate" resultType="boolean">
+        SELECT CASE WHEN EXISTS (SELECT 1 FROM account_snapshots WHERE snapshot_date = #{snapshotDate}) THEN 1 ELSE 0 END
+        FROM DUAL
+    </select>
+
 </mapper>

@@ -14,4 +14,6 @@ public interface AccountSnapshotMapper {
 
     List<AccountSnapshot> findByAccountIdAndSnapshotDateGreaterThanEqualOrderBySnapshotDateAsc(
             @Param("accountId") Long accountId, @Param("from") LocalDate from);
+
+    boolean existsBySnapshotDate(@Param("snapshotDate") LocalDate snapshotDate);
 }

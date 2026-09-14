@@ -22,4 +22,10 @@
         ORDER BY snapshot_date ASC
     </select>
 
+    <select id="findStockCodesBySnapshotDate" resultType="string">
+        SELECT stock_code
+        FROM price_snapshots
+        WHERE snapshot_date = #{snapshotDate}
+    </select>
+
 </mapper>
