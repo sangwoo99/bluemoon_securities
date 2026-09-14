@@ -13,6 +13,13 @@ spring:
       host: ${SPRING_REDIS_HOST:localhost}
       port: ${SPRING_REDIS_PORT:6379}
 
+  flyway:
+    # Oracle Autonomous DB의 ADMIN 스키마는 앱 테이블이 없어도 오라클 기본 시스템 객체 때문에
+    # Flyway가 "non-empty schema"로 판단해 baseline 없이는 마이그레이션을 거부함.
+    # baseline-version을 0으로 둬서 V1부터 정상적으로 전부 적용되도록 함(V1이 스킵되면 안 됨).
+    baseline-on-migrate: true
+    baseline-version: 0
+
 mybatis:
   mapper-locations: classpath:mapper/*.xml
   configuration:
