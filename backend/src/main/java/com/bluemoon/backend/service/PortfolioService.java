@@ -1,5 +1,6 @@
 package com.bluemoon.backend.service;
 
+import com.bluemoon.backend.common.KstClock;
 import com.bluemoon.backend.common.exception.ApiException;
 import com.bluemoon.backend.common.exception.ErrorCode;
 import com.bluemoon.backend.domain.account.Account;
@@ -57,10 +58,11 @@ public class PortfolioService {
         BigDecimal totalGain = totalValue.subtract(totalCost);
         BigDecimal totalGainRate = percentageOf(totalGain, totalCost);
 
+        LocalDate today = KstClock.today();
         BigDecimal yesterdayValue = accountSnapshotMapper
-                .findByAccountIdAndSnapshotDateGreaterThanEqualOrderBySnapshotDateAsc(account.getId(), LocalDate.now().minusDays(7))
+                .findByAccountIdAndSnapshotDateGreaterThanEqualOrderBySnapshotDateAsc(account.getId(), today.minusDays(7))
                 .stream()
-                .filter(s -> s.getSnapshotDate().isBefore(LocalDate.now()))
+                .filter(s -> s.getSnapshotDate().isBefore(today))
                 .reduce((first, second) -> second)
                 .map(AccountSnapshot::getTotalValue)
                 .orElse(null);
@@ -84,7 +86,7 @@ public class PortfolioService {
         Account account = accountMapper.findByUserId(userId)
                 .orElseThrow(() -> new ApiException(ErrorCode.ACCOUNT_NOT_FOUND));
 
-        LocalDate from = LocalDate.now().minusDays(periodToDays(period));
+        LocalDate from = KstClock.today().minusDays(periodToDays(period));
 
         return accountSnapshotMapper
                 .findByAccountIdAndSnapshotDateGreaterThanEqualOrderBySnapshotDateAsc(account.getId(), from)

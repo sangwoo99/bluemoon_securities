@@ -11,8 +11,10 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
+
 /**
- * RAG 서비스 장애가 대시보드 전체를 막지 않도록, 조회 실패 시에도 success:true, data:null로 응답한다
+ * RAG 서비스 장애가 대시보드 전체를 막지 않도록, 조회 실패 시에도 success:true, data:[]/null로 응답한다
  * (docs/api-spec.md 5장, 스토리보드 2.1 에러 처리).
  */
 @Slf4j
@@ -24,13 +26,14 @@ public class InsightController {
     private final InsightService insightService;
     private final CurrentUserProvider currentUserProvider;
 
+    /** 대시보드 슬라이드 카드용 — 계좌당 최대 3건(보유 종목 포함). */
     @GetMapping("/today")
-    public ApiResponse<InsightResponse> getToday() {
+    public ApiResponse<List<InsightResponse>> getToday() {
         try {
             return ApiResponse.ok(insightService.getToday(currentUserProvider.getUserId()));
         } catch (Exception e) {
             log.warn("오늘의 AI 인사이트 조회 실패", e);
-            return ApiResponse.ok(null);
+            return ApiResponse.ok(List.of());
         }
     }
 

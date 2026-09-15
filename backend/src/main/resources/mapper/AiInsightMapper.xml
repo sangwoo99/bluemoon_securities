@@ -48,4 +48,8 @@
         ) latest ON a.stock_code = latest.stock_code AND a.generated_at = latest.max_generated_at
     </select>
 
+    <select id="findAllDistinctStockCodes" resultType="string">
+        SELECT DISTINCT stock_code FROM ai_insights
+    </select>
+
 </mapper>

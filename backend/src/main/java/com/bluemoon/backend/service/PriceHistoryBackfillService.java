@@ -1,6 +1,7 @@
 package com.bluemoon.backend.service;
 
 import com.bluemoon.backend.client.KisClient;
+import com.bluemoon.backend.common.KstClock;
 import com.bluemoon.backend.domain.snapshot.PriceSnapshot;
 import com.bluemoon.backend.domain.stock.Stock;
 import com.bluemoon.backend.mapper.PriceSnapshotMapper;
@@ -48,7 +49,7 @@ public class PriceHistoryBackfillService {
         // 같은 기동 시점에 MarketRankingBatchService도 KIS를 호출해 초당 호출 제한(EGW00201)에 걸리기 쉬워, 살짝 늦춰 시작한다.
         sleep(CALL_INTERVAL_MS * 2);
 
-        LocalDate today = LocalDate.now();
+        LocalDate today = KstClock.today();
         LocalDate dailyFrom = today.minusDays(DAILY_RANGE_DAYS);
         LocalDate totalFrom = today.minusDays(TOTAL_BACKFILL_DAYS);
 

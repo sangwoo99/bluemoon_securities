@@ -1,5 +1,6 @@
 package com.bluemoon.backend.domain.insight;
 
+import com.bluemoon.backend.common.KstClock;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -24,7 +25,7 @@ public class AiInsight {
         this.stockCode = stockCode;
         this.content = content;
         this.sources = sources;
-        this.generatedAt = LocalDateTime.now();
+        this.generatedAt = KstClock.now();
     }
 
     public record InsightSource(String name, String date, String title, String url) {

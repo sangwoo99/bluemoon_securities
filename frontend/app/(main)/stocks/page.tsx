@@ -49,7 +49,11 @@ export default async function StocksIndexPage({ searchParams }: { searchParams: 
   const heldCodes = new Set(holdings.map((h) => h.stockCode));
   const watchedCodes = new Set(watchlist.map((w) => w.code));
 
-  const sortedAllStocks = [...allStocks].sort((a, b) => a.name.localeCompare(b.name, "ko"));
+  // AI 인사이트가 있는 종목을 먼저 보여줘 첫 페이지에서 바로 눈에 띄게 한다.
+  const sortedAllStocks = [...allStocks].sort((a, b) => {
+    if (!!a.hasInsight !== !!b.hasInsight) return a.hasInsight ? -1 : 1;
+    return a.name.localeCompare(b.name, "ko");
+  });
   const totalPages = Math.max(1, Math.ceil(sortedAllStocks.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
 

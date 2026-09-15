@@ -99,7 +99,7 @@ CREATE TABLE daily_picks (
     account_id  BIGINT  NOT NULL REFERENCES accounts (id),
     insight_id  BIGINT  NOT NULL REFERENCES ai_insights (id),
     pick_date   DATE    NOT NULL,
-    CONSTRAINT uq_daily_picks_account_date UNIQUE (account_id, pick_date)
+    CONSTRAINT uq_daily_picks_account_date_insight UNIQUE (account_id, pick_date, insight_id)
 );
 
 CREATE TABLE watchlists (

@@ -39,6 +39,7 @@ services:
       redis:
         condition: service_healthy
     environment:
+      TZ: Asia/Seoul
       SPRING_DATASOURCE_URL: jdbc:oracle:thin:@//oracle:1521/FREEPDB1
       SPRING_DATASOURCE_USERNAME: ${ORACLE_APP_USER:-bluemoon}
       SPRING_DATASOURCE_PASSWORD: ${ORACLE_APP_PASSWORD:-change-me}

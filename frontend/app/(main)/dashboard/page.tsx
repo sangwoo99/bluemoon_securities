@@ -1,7 +1,7 @@
 import Link from "next/link";
 import SummaryCards from "@/components/SummaryCards";
 import AssetTrendChart from "@/components/AssetTrendChart";
-import AiInsightCard from "@/components/AiInsightCard";
+import AiInsightCarousel from "@/components/AiInsightCarousel";
 import HoldingsTable from "@/components/HoldingsTable";
 import AllocationChart from "@/components/AllocationChart";
 import PeriodSelect from "@/components/PeriodSelect";
@@ -24,11 +24,11 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const resolvedSearchParams = await searchParams;
   const period = (resolvedSearchParams.period ?? "1M") as TrendPeriod;
 
-  const [summary, trend, holdings, insight] = await Promise.all([
+  const [summary, trend, holdings, insights] = await Promise.all([
     safeGet<PortfolioSummary>("/api/portfolio/summary"),
     safeGet<TrendPoint[]>(`/api/portfolio/trend?period=${period}`),
     safeGet<Holding[]>("/api/holdings"),
-    safeGet<Insight>("/api/insights/today"),
+    safeGet<Insight[]>("/api/insights/today"),
   ]);
 
   return (
@@ -55,12 +55,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
           <AssetTrendChart data={trend ?? []} />
         </div>
 
-        <AiInsightCard
-          insight={insight}
-          generatedAtLabel={insight ? `${insight.generatedAt.slice(11, 16)} 생성` : undefined}
-          linkStock
-          badgeLabel="오늘의 AI 인사이트"
-        />
+        <AiInsightCarousel insights={insights ?? []} />
       </div>
 
       <div className="grid grid-2">

@@ -5,12 +5,12 @@ import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
 import java.time.LocalDate;
-import java.util.Optional;
+import java.util.List;
 
 @Mapper
 public interface DailyPickMapper {
 
     void insert(DailyPick dailyPick);
 
-    Optional<DailyPick> findByAccountIdAndPickDate(@Param("accountId") Long accountId, @Param("pickDate") LocalDate pickDate);
+    List<DailyPick> findByAccountIdAndPickDate(@Param("accountId") Long accountId, @Param("pickDate") LocalDate pickDate);
 }

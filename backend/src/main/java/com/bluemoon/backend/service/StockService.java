@@ -1,6 +1,7 @@
 package com.bluemoon.backend.service;
 
 import com.bluemoon.backend.client.KisClient;
+import com.bluemoon.backend.common.KstClock;
 import com.bluemoon.backend.common.exception.ApiException;
 import com.bluemoon.backend.common.exception.ErrorCode;
 import com.bluemoon.backend.domain.stock.RankType;
@@ -9,6 +10,7 @@ import com.bluemoon.backend.domain.stock.TopMover;
 import com.bluemoon.backend.dto.response.IntradayPricePointResponse;
 import com.bluemoon.backend.dto.response.PricePointResponse;
 import com.bluemoon.backend.dto.response.StockResponse;
+import com.bluemoon.backend.mapper.AiInsightMapper;
 import com.bluemoon.backend.mapper.PriceSnapshotMapper;
 import com.bluemoon.backend.mapper.StockMapper;
 import com.bluemoon.backend.mapper.TopMoverMapper;
@@ -24,6 +26,7 @@ import java.time.Duration;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -38,6 +41,7 @@ public class StockService {
     private final StockMapper stockMapper;
     private final PriceSnapshotMapper priceSnapshotMapper;
     private final TopMoverMapper topMoverMapper;
+    private final AiInsightMapper aiInsightMapper;
     private final KisClient kisClient;
     private final StringRedisTemplate redisTemplate;
     private final ObjectMapper objectMapper;
@@ -48,9 +52,13 @@ public class StockService {
         return toResponse(stock);
     }
 
+    /** 종목 목록(첫 페이지에 AI 인사이트 있는 종목을 우선 보여주기 위해 hasInsight를 채워서 반환). */
     @Transactional(readOnly = true)
     public List<StockResponse> getAllStocks() {
-        return stockMapper.findAll().stream().map(this::toResponse).toList();
+        Set<String> codesWithInsight = Set.copyOf(aiInsightMapper.findAllDistinctStockCodes());
+        return stockMapper.findAll().stream()
+                .map(stock -> toResponse(stock, codesWithInsight.contains(stock.getCode())))
+                .toList();
     }
 
     /** "오늘의 랭킹 TOP 10"(등락률/거래량) — top_movers 캐시만 조회한다(요청 경로에서 KIS를 직접 호출하지 않음). */
@@ -80,6 +88,10 @@ public class StockService {
         return new StockResponse(stock.getCode(), stock.getName(), stock.getMarket(), stock.getCurrentPrice(), stock.getPrevClose());
     }
 
+    private StockResponse toResponse(Stock stock, boolean hasInsight) {
+        return new StockResponse(stock.getCode(), stock.getName(), stock.getMarket(), stock.getCurrentPrice(), stock.getPrevClose(), null, hasInsight);
+    }
+
     private StockResponse toResponse(Stock stock, Long volume) {
         return new StockResponse(stock.getCode(), stock.getName(), stock.getMarket(), stock.getCurrentPrice(), stock.getPrevClose(), volume);
     }
@@ -88,7 +100,7 @@ public class StockService {
     public List<PricePointResponse> getPriceHistory(String code, int days) {
         findStock(code); // 존재 검증
 
-        LocalDate from = LocalDate.now().minusDays(days);
+        LocalDate from = KstClock.today().minusDays(days);
         return priceSnapshotMapper
                 .findByStockCodeAndSnapshotDateGreaterThanEqualOrderBySnapshotDateAsc(code, from)
                 .stream()

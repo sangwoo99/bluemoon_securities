@@ -33,6 +33,10 @@ services:
         condition: service_healthy
     mem_limit: 550m
     environment:
+      # 베이스 이미지 기본 타임존은 UTC — 명시하지 않으면 배치(SnapshotBatchService/InsightBatchService 등)의
+      # "오늘" 계산이 KST와 최대 9시간 어긋나 날짜가 하루씩 밀리는 버그가 생긴다. 코드에서도 KstClock으로
+      # 명시하지만, 컨테이너 레벨에서도 이중으로 막아둔다.
+      TZ: Asia/Seoul
       # MaxRAMPercentage는 컨테이너 메모리 제한(mem_limit) 기준으로 계산됨 — 1GB VM에서 다른 서비스와
       # 나눠 쓰기 위해 힙을 550m의 절반 정도로 제한.
       JDK_JAVA_OPTIONS: -XX:MaxRAMPercentage=50.0 -XX:+UseSerialGC

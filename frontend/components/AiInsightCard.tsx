@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { ReactNode } from "react";
 import type { Insight } from "@/lib/types";
 
 export default function AiInsightCard({
@@ -7,12 +8,15 @@ export default function AiInsightCard({
   linkStock = false,
   badgeLabel = "AI 인사이트",
   showNews = true,
+  nav,
 }: {
   insight: Insight | null;
   generatedAtLabel?: string;
   linkStock?: boolean;
   badgeLabel?: string;
   showNews?: boolean;
+  /** 여러 종목을 넘겨볼 수 있는 슬라이드 카드용 화살표/점 네비게이션 (대시보드 캐러셀 전용). */
+  nav?: ReactNode;
 }) {
   if (!insight) {
     return (
@@ -29,7 +33,10 @@ export default function AiInsightCard({
     <div className="card ai-card">
       <div className="card-head">
         <span className="ai-badge">✦ {badgeLabel}</span>
-        {generatedAtLabel && <span style={{ fontSize: 11, color: "var(--text-faint)" }}>{generatedAtLabel}</span>}
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          {generatedAtLabel && <span style={{ fontSize: 11, color: "var(--text-faint)" }}>{generatedAtLabel}</span>}
+          {nav}
+        </div>
       </div>
 
       {insight.stockCode && insight.stockName && (

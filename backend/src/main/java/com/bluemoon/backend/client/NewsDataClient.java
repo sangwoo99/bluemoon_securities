@@ -1,5 +1,6 @@
 package com.bluemoon.backend.client;
 
+import com.bluemoon.backend.common.KstClock;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -8,6 +9,7 @@ import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
 
 import java.time.Duration;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
@@ -27,6 +29,8 @@ import java.util.List;
 public class NewsDataClient {
 
     private static final DateTimeFormatter PUB_DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+    /** /latest에 최근 기사가 하나도 없을 때만 뒤지는 과거 범위 — "최신 뉴스가 없어도 가장 과거의 것이라도" 보여주기 위함. */
+    private static final int ARCHIVE_LOOKBACK_YEARS = 2;
 
     private final WebClient webClient;
     private final String apiKey;
@@ -36,36 +40,61 @@ public class NewsDataClient {
         this.apiKey = apiKey;
     }
 
-    /** 종목명 관련 최신 한국어 뉴스를 검색한다. 키 미설정/장애 시 빈 리스트를 반환한다. */
+    /**
+     * 종목명 관련 최신 한국어 뉴스를 검색한다. /latest(최근 48시간)에 결과가 없으면 /archive로 과거
+     * {@value #ARCHIVE_LOOKBACK_YEARS}년치를 넓게 훑어 가장 오래된 기사라도 근거로 쓴다 — 거래량이 적어
+     * 최근 보도가 없는 종목도 "최근 뉴스가 없어 인사이트를 불러올 수 없습니다"로 비워두지 않기 위함.
+     * archive는 NewsData.io 유료 플랜부터 제공되므로, 무료 플랜에서는 이 폴백이 조용히 빈 리스트로 끝난다
+     * (아래 개별 메서드의 예외 처리와 동일하게 배치 흐름을 막지 않음).
+     * 키 미설정/장애 시에도 빈 리스트를 반환한다.
+     */
     public List<NewsArticle> searchNews(String stockName, int size) {
         if (apiKey.isBlank()) {
             return List.of();
         }
 
+        List<NewsArticle> latest = search("/api/1/latest", stockName, size, null, null);
+        if (!latest.isEmpty()) {
+            return latest;
+        }
+
+        LocalDate to = KstClock.today();
+        LocalDate from = to.minusYears(ARCHIVE_LOOKBACK_YEARS);
+        return search("/api/1/archive", stockName, size, from, to);
+    }
+
+    private List<NewsArticle> search(String path, String stockName, int size, LocalDate fromDate, LocalDate toDate) {
         try {
             LatestNewsResponse response = webClient.get()
-                    .uri(uriBuilder -> uriBuilder
-                            .path("/api/1/latest")
-                            .queryParam("apikey", apiKey)
-                            .queryParam("q", stockName)
-                            .queryParam("language", "ko")
-                            .queryParam("size", size)
-                            .build())
+                    .uri(uriBuilder -> {
+                        uriBuilder.path(path)
+                                .queryParam("apikey", apiKey)
+                                .queryParam("q", stockName)
+                                .queryParam("language", "ko")
+                                .queryParam("size", size);
+                        if (fromDate != null) {
+                            uriBuilder.queryParam("from_date", fromDate);
+                        }
+                        if (toDate != null) {
+                            uriBuilder.queryParam("to_date", toDate);
+                        }
+                        return uriBuilder.build();
+                    })
                     .retrieve()
                     .bodyToMono(LatestNewsResponse.class)
                     .timeout(Duration.ofSeconds(10))
                     .block();
 
             if (response == null || !"success".equals(response.status()) || response.results() == null) {
-                log.warn("NewsData.io 검색 실패 — stockName={}, status={}", stockName, response != null ? response.status() : "응답 없음");
+                log.warn("NewsData.io 검색 실패 — path={}, stockName={}, status={}", path, stockName, response != null ? response.status() : "응답 없음");
                 return List.of();
             }
             return response.results().stream().map(this::toArticle).toList();
         } catch (WebClientResponseException e) {
-            log.warn("NewsData.io 검색 실패 — stockName={}, status={}, body={}", stockName, e.getStatusCode(), e.getResponseBodyAsString());
+            log.warn("NewsData.io 검색 실패 — path={}, stockName={}, status={}, body={}", path, stockName, e.getStatusCode(), e.getResponseBodyAsString());
             return List.of();
         } catch (Exception e) {
-            log.warn("NewsData.io 검색 중 오류 — stockName={}, error={}", stockName, e.getMessage());
+            log.warn("NewsData.io 검색 중 오류 — path={}, stockName={}, error={}", path, stockName, e.getMessage());
             return List.of();
         }
     }

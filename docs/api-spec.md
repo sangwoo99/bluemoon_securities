@@ -117,10 +117,11 @@
 {
   "success": true,
   "data": [
-    { "code": "005930", "name": "삼성전자", "market": "KOSPI", "currentPrice": 73800, "prevClose": 73000 }
+    { "code": "005930", "name": "삼성전자", "market": "KOSPI", "currentPrice": 73800, "prevClose": 73000, "hasInsight": true }
   ]
 }
 ```
+> `hasInsight`: `AI_INSIGHTS`에 해당 종목 인사이트가 하나라도 있는지 여부. 종목 목록 화면은 이 값을 기준으로 인사이트가 있는 종목을 먼저 정렬해 첫 페이지에 노출한다.
 
 ### GET `/api/stocks/top-movers?type=FLUCTUATION`
 오늘의 랭킹 TOP 10. `type`: `FLUCTUATION`(등락률순, 기본값) / `VOLUME`(거래량순). `TOP_MOVERS` 캐시 테이블을 조회만 하고, KIS 호출은 `MarketRankingBatchService`(장중 10분 간격 + 앱 기동 시 1회)에서만 수행 — AI 인사이트와 동일하게 요청 경로에서 외부 API를 직접 호출하지 않는다.
@@ -297,24 +298,28 @@
 ## 5. AI 인사이트 (Spring Boot 배치 캐시 조회)
 
 ### GET `/api/insights/today`
+대시보드 "오늘의 AI 인사이트" 슬라이드 카드 — 계좌당 **최대 3건**(배열), 보유 종목도 후보에 포함한다 (`docs/db-schema.md` DAILY_PICKS 참고).
+
 **Response 200**
 ```json
 {
   "success": true,
-  "data": {
-    "stockCode": "005930",
-    "stockName": "삼성전자",
-    "content": "최근 1주일간 HBM 수요 확대 관련 보도가 이어지며...",
-    "sources": [{ "name": "한국경제", "date": "2026-08-26", "title": "삼성전자, HBM4 수율 개선...", "url": "https://..." }],
-    "generatedAt": "2026-08-27T08:40:00"
-  }
+  "data": [
+    {
+      "stockCode": "005930",
+      "stockName": "삼성전자",
+      "content": "최근 1주일간 HBM 수요 확대 관련 보도가 이어지며...",
+      "sources": [{ "name": "한국경제", "date": "2026-08-26", "title": "삼성전자, HBM4 수율 개선...", "url": "https://..." }],
+      "generatedAt": "2026-08-27T08:40:00"
+    }
+  ]
 }
 ```
 **Response 200 (인사이트 없음/조회 실패 시)**
 ```json
-{ "success": true, "data": null }
+{ "success": true, "data": [] }
 ```
-> AI 인사이트 조회 실패(또는 배치 미실행으로 캐시 없음)가 대시보드 전체를 막지 않도록, 이 엔드포인트는 실패해도 `success: true, data: null`로 응답하고 프론트에서 "최근 뉴스가 없어 인사이트를 불러올 수 없습니다"로 처리 (스토리보드 2.1 에러 처리 참고)
+> AI 인사이트 조회 실패(또는 배치 미실행으로 캐시 없음)가 대시보드 전체를 막지 않도록, 이 엔드포인트는 실패해도 `success: true, data: []`로 응답하고 프론트에서 "최근 뉴스가 없어 인사이트를 불러올 수 없습니다"로 처리 (스토리보드 2.1 에러 처리 참고)
 
 ### GET `/api/insights/{code}`
 **Response 200**
@@ -337,13 +342,13 @@
 별도 네트워크 API가 아니라 `InsightBatchService`(하루 1회 배치, `docs/db-schema.md` 배치 요약 참고)가 직접 호출하는
 내부 컴포넌트 체인입니다 (외부 노출 없음). 요청 경로(`/api/insights/*`)에서는 절대 호출하지 않습니다.
 
-1. `NewsDataClient.searchNews(stockName, 10)` — NewsData.io `/api/1/latest`로 종목명 관련 최신 한국어 기사 조회 (최대 10건)
+1. `NewsDataClient.searchNews(stockName, 10)` — NewsData.io `/api/1/latest`로 종목명 관련 최신 한국어 기사 조회 (최대 10건). 결과가 비어있으면(거래량이 적어 최근 48시간 내 보도가 없는 종목 등) `/api/1/archive`로 최근 2년치를 넓게 훑어 가장 오래된 기사라도 근거로 삼는다 (archive는 NewsData.io 유료 플랜 기능 — 무료 플랜에서는 이 폴백이 조용히 빈 결과로 끝나고 해당 종목은 건너뜀).
 2. `InsightGenerationService.generate(stockCode, stockName)` — 상위 5건을 컨텍스트로 구성해 프롬프트 조립
 3. `OpenAiClient.chat(systemPrompt, userPrompt)` — OpenAI Chat Completions API 호출, "매수/매도 추천 금지" 시스템 프롬프트 고정
 4. 결과(`content` + `sources`)를 `AI_INSIGHTS` 테이블에 INSERT
 
-뉴스가 없거나 LLM 호출이 실패하면 해당 종목은 건너뛰고 다음 종목을 계속 처리합니다 (Spring Boot 배치가 이 흐름을
-하루 1회 호출해 캐싱 — 실시간 호출 아님, 비용 절감을 위한 전략, PRD의 성공 기준과 연결).
+뉴스가 하나도 없거나(최신+아카이브 모두 실패) LLM 호출이 실패하면 해당 종목은 건너뛰고 다음 종목을 계속 처리합니다
+(Spring Boot 배치가 이 흐름을 하루 1회 호출해 캐싱 — 실시간 호출 아님, 비용 절감을 위한 전략, PRD의 성공 기준과 연결).
 
 > **변경 이력**: 과거에는 이 자리에 Spring Boot ↔ Python RAG 서비스(`POST /generate-insight`) 간 내부 HTTP API가
 > 있었으나, 오라클 프리티어 메모리 제약으로 Spring Boot 내부 처리로 통합하며 제거했습니다. 옛 계약은

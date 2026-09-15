@@ -1,5 +1,6 @@
 package com.bluemoon.backend.service;
 
+import com.bluemoon.backend.common.KstClock;
 import com.bluemoon.backend.domain.account.Account;
 import com.bluemoon.backend.domain.holding.Holding;
 import com.bluemoon.backend.domain.snapshot.AccountSnapshot;
@@ -48,7 +49,7 @@ public class SnapshotBatchService {
     @Scheduled(cron = "0 0 16 * * *", zone = "Asia/Seoul")
     @Transactional
     public void takeDailySnapshots() {
-        LocalDate today = LocalDate.now();
+        LocalDate today = KstClock.today();
 
         if (accountSnapshotMapper.existsBySnapshotDate(today)) {
             return;

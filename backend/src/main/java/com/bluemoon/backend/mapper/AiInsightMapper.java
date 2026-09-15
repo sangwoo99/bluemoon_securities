@@ -21,4 +21,7 @@ public interface AiInsightMapper {
 
     /** 종목별로 가장 최근에 생성된 인사이트 1건씩만 반환한다 (오늘 새로 생성했든 예전에 생성했든 상관없이 "지금 쓸 수 있는 최신 것"). */
     List<AiInsight> findLatestPerStock();
+
+    /** 종목 목록(/api/stocks)에서 "인사이트 있는 종목 우선 정렬"에 쓰는 종목 코드 집합. */
+    List<String> findAllDistinctStockCodes();
 }

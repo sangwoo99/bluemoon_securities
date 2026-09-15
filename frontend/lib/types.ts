@@ -39,6 +39,7 @@ export interface StockDetail {
   currentPrice: number;
   prevClose: number;
   volume?: number | null;
+  hasInsight?: boolean;
 }
 
 export interface PricePoint {

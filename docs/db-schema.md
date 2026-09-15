@@ -176,7 +176,7 @@ STOCKS 1───N TOP_MOVERS
 | insight_id | NUMBER(19) | FK → AI_INSIGHTS.id, NOT NULL | |
 | pick_date | DATE | NOT NULL | |
 
-> **제약**: `UNIQUE(account_id, pick_date)`. "오늘의 추천 종목"(`GET /api/insights/today`)은 계좌별로 다를 수 있음 — **계좌가 보유하지 않은 종목** 중 거래량 TOP 랭킹(`TOP_MOVERS`, `RankType.VOLUME`) 순으로 훑어 그날 인사이트가 생성된 첫 종목을 배치가 선정해 이 테이블에 기록 (새로 눈여겨볼 만한 종목 추천 컨셉 — 이미 보유한 종목은 후보에서 제외). `AI_INSIGHTS`를 JOIN해 응답.
+> **제약**: `UNIQUE(account_id, pick_date, insight_id)` (V8 마이그레이션 — 이전엔 `UNIQUE(account_id, pick_date)`로 계좌당 하루 1건뿐이었음). "오늘의 AI 인사이트"(`GET /api/insights/today`, 대시보드 슬라이드 카드)는 계좌당 하루 최대 3건 — 인사이트가 있는 종목(보유 종목 포함) 중 거래량 TOP 랭킹(`TOP_MOVERS`, `RankType.VOLUME`) 순으로 훑어 배치가 선정해 이 테이블에 기록. `AI_INSIGHTS`를 JOIN해 응답.
 
 ### WATCHLISTS
 | 컬럼 | 타입 | 제약 | 설명 |
