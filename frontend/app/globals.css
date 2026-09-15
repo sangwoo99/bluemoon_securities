@@ -419,4 +419,9 @@ tr.clickable:hover { background: var(--surface-2); }
   .nav-btn, .sidebar-github { width: auto; flex-shrink: 0; white-space: nowrap; margin-top: 0; }
   .grid-2 { grid-template-columns: 1fr; }
   main { padding: 20px 16px; }
+  .summary-row { gap: 10px; }
+  .summary-card { padding: 14px 16px; }
+  .summary-label { font-size: 11px; margin-bottom: 6px; }
+  .summary-value { font-size: 19px; }
+  .summary-delta { font-size: 11.5px; margin-top: 4px; }
 }
