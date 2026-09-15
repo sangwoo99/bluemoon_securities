@@ -20,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -81,18 +82,45 @@ public class PortfolioService {
         );
     }
 
+    /**
+     * 장마감(16:00 KST) 배치가 아직 오늘자 스냅샷을 안 찍은 시간대(당일 장중)에는 과거 배치 스냅샷 뒤에
+     * 실시간 평가금액을 "오늘" 포인트로 이어 붙인다 — 그렇지 않으면 방금 산 종목의 평가금액 변화가
+     * 차트에는 전혀 반영 안 된 것처럼 보임.
+     */
     @Transactional(readOnly = true)
     public List<TrendPointResponse> getTrend(Long userId, String period) {
         Account account = accountMapper.findByUserId(userId)
                 .orElseThrow(() -> new ApiException(ErrorCode.ACCOUNT_NOT_FOUND));
 
-        LocalDate from = KstClock.today().minusDays(periodToDays(period));
+        LocalDate today = KstClock.today();
+        LocalDate from = today.minusDays(periodToDays(period));
 
-        return accountSnapshotMapper
-                .findByAccountIdAndSnapshotDateGreaterThanEqualOrderBySnapshotDateAsc(account.getId(), from)
-                .stream()
+        List<AccountSnapshot> snapshots = accountSnapshotMapper
+                .findByAccountIdAndSnapshotDateGreaterThanEqualOrderBySnapshotDateAsc(account.getId(), from);
+
+        List<TrendPointResponse> points = new ArrayList<>(snapshots.stream()
                 .map(s -> new TrendPointResponse(s.getSnapshotDate(), s.getTotalValue()))
-                .toList();
+                .toList());
+
+        boolean hasTodaySnapshot = !snapshots.isEmpty() && snapshots.get(snapshots.size() - 1).getSnapshotDate().equals(today);
+        if (!hasTodaySnapshot) {
+            points.add(new TrendPointResponse(today, currentTotalValue(account.getId())));
+        }
+
+        return points;
+    }
+
+    private BigDecimal currentTotalValue(Long accountId) {
+        List<Holding> holdings = holdingMapper.findByAccountIdAndQuantityGreaterThan(accountId, 0L);
+        if (holdings.isEmpty()) {
+            return BigDecimal.ZERO;
+        }
+        List<String> stockCodes = holdings.stream().map(Holding::getStockCode).toList();
+        Map<String, Stock> stocksByCode = stockMapper.findAllByCodes(stockCodes).stream()
+                .collect(java.util.stream.Collectors.toMap(Stock::getCode, Function.identity()));
+        return holdings.stream()
+                .map(h -> stocksByCode.get(h.getStockCode()).getCurrentPrice().multiply(BigDecimal.valueOf(h.getQuantity())))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
     private long periodToDays(String period) {
