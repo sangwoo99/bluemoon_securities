@@ -424,4 +424,15 @@ tr.clickable:hover { background: var(--surface-2); }
   .summary-label { font-size: 11px; margin-bottom: 6px; }
   .summary-value { font-size: 19px; }
   .summary-delta { font-size: 11.5px; margin-top: 4px; }
+  /* 표가 폭이 좁은 화면에 맞춰 억지로 100%로 눌리면 셀 안 글자가 한 글자씩 줄바꿈되며 세로로
+     보임. 표는 내용 폭 그대로 두고, 표를 담은 카드를 가로 스크롤 컨테이너로 바꿔 오른쪽을
+     스크롤해서 볼 수 있게 한다. */
+  /* main은 세로 방향 .shell의 flex 아이템이라 stretch로 폭이 정해지는데, 표처럼 min-content 폭이
+     큰 자손이 있으면 그 폭이 그대로 올라와 main 자체가 넓어지며 페이지 전체가 밀림.
+     max-width:100%로 못박아야 스크롤이 카드 안에만 갇힘 (min-width:0만으로는 안 됨 — 세로 flex의
+     교차축(가로) 늘어남은 flex-shrink가 아니라 stretch 계산이라 min-width가 안 먹음). */
+  main { min-width: 0; max-width: 100%; }
+  .card { overflow-x: auto; }
+  table { width: max-content; min-width: 100%; }
+  th, td { white-space: nowrap; }
 }
