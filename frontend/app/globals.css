@@ -213,16 +213,17 @@ main { flex: 1; padding: 28px 34px; overflow-y: auto; max-width: 1180px; margin:
   border-radius: 6px;
 }
 .ai-disclaimer { font-size: 11px; color: var(--text-faint); border-top: 1px solid var(--border); padding-top: 10px; line-height: 1.5; }
-.ai-carousel-nav { display: flex; align-items: center; gap: 8px; }
+.ai-carousel-swipe { touch-action: pan-y; }
+.ai-carousel-nav { display: flex; align-items: center; gap: 4px; }
 .ai-carousel-arrow {
   background: none;
   border: 1px solid var(--border);
   color: var(--text-dim);
   border-radius: 999px;
-  width: 20px;
-  height: 20px;
+  width: 28px;
+  height: 28px;
   line-height: 1;
-  font-size: 13px;
+  font-size: 16px;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
@@ -230,17 +231,19 @@ main { flex: 1; padding: 28px 34px; overflow-y: auto; max-width: 1180px; margin:
   padding: 0;
 }
 .ai-carousel-arrow:hover { border-color: var(--accent); color: var(--accent); }
-.ai-carousel-dots { display: flex; align-items: center; gap: 5px; }
+.ai-carousel-dots { display: flex; align-items: center; gap: 2px; }
 .ai-carousel-dot {
+  box-sizing: content-box;
   width: 6px;
   height: 6px;
+  padding: 8px 6px;
+  background-color: var(--border);
+  background-clip: content-box;
   border-radius: 999px;
   border: none;
-  background: var(--border);
   cursor: pointer;
-  padding: 0;
 }
-.ai-carousel-dot.active { background: var(--accent); width: 14px; border-radius: 4px; }
+.ai-carousel-dot.active { background-color: var(--accent); width: 14px; border-radius: 4px; }
 .ai-news-list { margin-bottom: 10px; }
 .ai-news-label { display: block; font-size: 11px; color: var(--text-faint); margin-bottom: 6px; }
 .ai-news-list ul { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 4px; }
