@@ -107,7 +107,7 @@ export default function PriceChart({
                 {(() => {
                   const label = `${referenceLabel ?? "기준가"} ${Math.round(referencePrice!).toLocaleString()}`;
                   const labelWidth = label.length * 6 + 8;
-                  const labelX = width - PAD_RIGHT - labelWidth;
+                  const labelX = PAD_LEFT + (width - PAD_LEFT - PAD_RIGHT) / 2 - labelWidth / 2;
                   const labelCenterY = Math.max(PAD_TOP + 8, referenceY - 14);
                   return (
                     <g>
