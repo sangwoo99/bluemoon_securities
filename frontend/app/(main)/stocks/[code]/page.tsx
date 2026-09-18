@@ -6,7 +6,6 @@ import AiInsightCard from "@/components/AiInsightCard";
 import NewsSourcesCard from "@/components/NewsSourcesCard";
 import WatchlistToggleButton from "@/components/WatchlistToggleButton";
 import { apiGet, ApiError } from "@/lib/api";
-import { prevTradingDayLabel } from "@/lib/date";
 import { fmtPct } from "@/lib/format";
 import type { Holding, Insight, IntradayPricePoint, PricePoint, StockDetail, Trade } from "@/lib/types";
 
@@ -73,7 +72,7 @@ export default async function StockDetailPage({
   const myHolding = (holdings ?? []).find((h) => h.stockCode === code);
 
   const referencePrice = isIntraday ? stock.prevClose : myHolding?.avgPrice;
-  const referenceLabel = isIntraday ? `${prevTradingDayLabel()} 종가` : "내 평단가";
+  const referenceLabel = isIntraday ? "전일종가" : "내 평단가";
 
   const diff = stock.currentPrice - stock.prevClose;
   const rate = stock.prevClose !== 0 ? (diff / stock.prevClose) * 100 : 0;

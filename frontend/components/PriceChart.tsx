@@ -108,10 +108,11 @@ export default function PriceChart({
                   const label = `${referenceLabel ?? "기준가"} ${Math.round(referencePrice!).toLocaleString()}`;
                   const labelWidth = label.length * 6 + 8;
                   const labelX = width - PAD_RIGHT - labelWidth;
+                  const labelCenterY = Math.max(PAD_TOP + 8, referenceY - 14);
                   return (
                     <g>
-                      <rect x={labelX} y={referenceY - 8} width={labelWidth} height={16} rx={3} fill="#12161f" fillOpacity={0.9} />
-                      <text x={labelX + labelWidth / 2} y={referenceY} textAnchor="middle" dominantBaseline="middle" fontSize={10} fill="#8b93a7">
+                      <rect x={labelX} y={labelCenterY - 8} width={labelWidth} height={16} rx={3} fill="#12161f" fillOpacity={0.9} />
+                      <text x={labelX + labelWidth / 2} y={labelCenterY} textAnchor="middle" dominantBaseline="middle" fontSize={10} fill="#8b93a7">
                         {label}
                       </text>
                     </g>
@@ -119,6 +120,22 @@ export default function PriceChart({
                 })()}
               </>
             )}
+            {(() => {
+              const last = points[points.length - 1];
+              const label = Math.round(last.price).toLocaleString();
+              const labelWidth = label.length * 6 + 8;
+              const labelX = Math.max(PAD_LEFT, width - PAD_RIGHT - labelWidth);
+              const labelCenterY = last.y - 14 >= PAD_TOP + 8 ? last.y - 14 : last.y + 14;
+              return (
+                <g>
+                  <circle cx={last.x} cy={last.y} r={3} fill={color} />
+                  <rect x={labelX} y={labelCenterY - 8} width={labelWidth} height={16} rx={3} fill="#12161f" fillOpacity={0.9} />
+                  <text x={labelX + labelWidth / 2} y={labelCenterY} textAnchor="middle" dominantBaseline="middle" fontSize={10} fill={color}>
+                    {label}
+                  </text>
+                </g>
+              );
+            })()}
           </svg>
         )}
       </div>
