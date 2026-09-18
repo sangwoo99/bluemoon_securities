@@ -9,7 +9,18 @@ const PAD_TOP = 8;
 const PAD_BOTTOM = 4;
 const Y_TICKS = 4;
 
-export default function PriceChart({ data, up, prevClose }: { data: PricePoint[]; up: boolean; prevClose?: number }) {
+export default function PriceChart({
+  data,
+  up,
+  referencePrice,
+  referenceLabel,
+}: {
+  data: PricePoint[];
+  up: boolean;
+  /** 전일종가(당일 차트) 또는 내 평단가(기간 차트)처럼, 가로 점선으로 표시할 기준가. */
+  referencePrice?: number;
+  referenceLabel?: string;
+}) {
   const { ref, width, height } = useElementSize<HTMLDivElement>();
 
   if (data.length === 0) {
@@ -18,8 +29,8 @@ export default function PriceChart({ data, up, prevClose }: { data: PricePoint[]
 
   const color = up ? "#FF5C5C" : "#4C8DFF";
   const prices = data.map((d) => d.price);
-  const hasPrevClose = typeof prevClose === "number";
-  const allValues = hasPrevClose ? [...prices, prevClose] : prices;
+  const hasReference = typeof referencePrice === "number";
+  const allValues = hasReference ? [...prices, referencePrice] : prices;
   const minPrice = Math.min(...allValues);
   const maxPrice = Math.max(...allValues);
   const range = maxPrice - minPrice;
@@ -45,10 +56,10 @@ export default function PriceChart({ data, up, prevClose }: { data: PricePoint[]
     y: PAD_TOP + (i / Y_TICKS) * plotHeight,
   }));
 
-  const prevCloseY = hasPrevClose
+  const referenceY = hasReference
     ? range === 0
       ? PAD_TOP + plotHeight / 2
-      : PAD_TOP + (1 - (prevClose! - minPrice) / range) * plotHeight
+      : PAD_TOP + (1 - (referencePrice! - minPrice) / range) * plotHeight
     : null;
 
   // date 필드는 호출하는 쪽에서 이미 화면에 보여줄 형태(예: "09-01", "09:30")로 가공해서 넘겨준다.
@@ -82,25 +93,25 @@ export default function PriceChart({ data, up, prevClose }: { data: PricePoint[]
             ))}
             <path d={areaPath} fill="url(#priceFill)" stroke="none" />
             <path d={linePath} fill="none" stroke={color} strokeWidth={2} />
-            {prevCloseY !== null && (
+            {referenceY !== null && (
               <>
                 <line
                   x1={PAD_LEFT}
                   x2={width - PAD_RIGHT}
-                  y1={prevCloseY}
-                  y2={prevCloseY}
+                  y1={referenceY}
+                  y2={referenceY}
                   stroke="#8b93a7"
                   strokeWidth={1}
                   strokeDasharray="4 3"
                 />
                 {(() => {
-                  const label = `전일종가 ${Math.round(prevClose!).toLocaleString()}`;
+                  const label = `${referenceLabel ?? "기준가"} ${Math.round(referencePrice!).toLocaleString()}`;
                   const labelWidth = label.length * 6 + 8;
                   const labelX = width - PAD_RIGHT - labelWidth;
                   return (
                     <g>
-                      <rect x={labelX} y={prevCloseY - 8} width={labelWidth} height={16} rx={3} fill="#12161f" fillOpacity={0.9} />
-                      <text x={labelX + labelWidth / 2} y={prevCloseY} textAnchor="middle" dominantBaseline="middle" fontSize={10} fill="#8b93a7">
+                      <rect x={labelX} y={referenceY - 8} width={labelWidth} height={16} rx={3} fill="#12161f" fillOpacity={0.9} />
+                      <text x={labelX + labelWidth / 2} y={referenceY} textAnchor="middle" dominantBaseline="middle" fontSize={10} fill="#8b93a7">
                         {label}
                       </text>
                     </g>

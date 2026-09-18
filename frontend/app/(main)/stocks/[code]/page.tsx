@@ -6,8 +6,9 @@ import AiInsightCard from "@/components/AiInsightCard";
 import NewsSourcesCard from "@/components/NewsSourcesCard";
 import WatchlistToggleButton from "@/components/WatchlistToggleButton";
 import { apiGet, ApiError } from "@/lib/api";
+import { prevTradingDayLabel } from "@/lib/date";
 import { fmtPct } from "@/lib/format";
-import type { Insight, IntradayPricePoint, PricePoint, StockDetail, Trade } from "@/lib/types";
+import type { Holding, Insight, IntradayPricePoint, PricePoint, StockDetail, Trade } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -55,12 +56,13 @@ export default async function StockDetailPage({
   }
   if (!stock) notFound();
 
-  const [priceHistoryRaw, intradayRaw, trades, insight, watchlist] = await Promise.all([
+  const [priceHistoryRaw, intradayRaw, trades, insight, watchlist, holdings] = await Promise.all([
     isIntraday ? Promise.resolve(null) : safeGet<PricePoint[]>(`/api/stocks/${code}/price-history?days=${PERIOD_DAYS[period]}`),
     isIntraday ? safeGet<IntradayPricePoint[]>(`/api/stocks/${code}/intraday`) : Promise.resolve(null),
     safeGet<Trade[]>(`/api/trades/${code}`),
     safeGet<Insight>(`/api/insights/${code}`),
     safeGet<StockDetail[]>("/api/watchlist"),
+    safeGet<Holding[]>("/api/holdings"),
   ]);
 
   const priceHistory: PricePoint[] = isIntraday
@@ -68,6 +70,10 @@ export default async function StockDetailPage({
     : (priceHistoryRaw ?? []).map((p) => ({ date: p.date.slice(5), price: p.price }));
 
   const isWatched = (watchlist ?? []).some((w) => w.code === code);
+  const myHolding = (holdings ?? []).find((h) => h.stockCode === code);
+
+  const referencePrice = isIntraday ? stock.prevClose : myHolding?.avgPrice;
+  const referenceLabel = isIntraday ? `${prevTradingDayLabel()} 종가` : "내 평단가";
 
   const diff = stock.currentPrice - stock.prevClose;
   const rate = stock.prevClose !== 0 ? (diff / stock.prevClose) * 100 : 0;
@@ -113,7 +119,7 @@ export default async function StockDetailPage({
             <h3>시세 추이</h3>
           </div>
           <PeriodFilter current={period} />
-          <PriceChart data={priceHistory} up={up} prevClose={stock.prevClose} />
+          <PriceChart data={priceHistory} up={up} referencePrice={referencePrice} referenceLabel={referenceLabel} />
         </div>
 
         <AiInsightCard insight={insight} showNews={false} />
