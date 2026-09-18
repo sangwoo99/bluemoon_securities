@@ -73,6 +73,7 @@ export default async function StockDetailPage({
 
   const referencePrice = isIntraday ? stock.prevClose : myHolding?.avgPrice;
   const referenceLabel = isIntraday ? "전일종가" : "내 평단가";
+  const showIndicators = period === "1m" || period === "3m" || period === "1y";
 
   const diff = stock.currentPrice - stock.prevClose;
   const rate = stock.prevClose !== 0 ? (diff / stock.prevClose) * 100 : 0;
@@ -118,7 +119,13 @@ export default async function StockDetailPage({
             <h3>시세 추이</h3>
           </div>
           <StockPriceCard current={period}>
-            <PriceChart data={priceHistory} up={up} referencePrice={referencePrice} referenceLabel={referenceLabel} />
+            <PriceChart
+              data={priceHistory}
+              up={up}
+              referencePrice={referencePrice}
+              referenceLabel={referenceLabel}
+              showIndicators={showIndicators}
+            />
           </StockPriceCard>
         </div>
 
