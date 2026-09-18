@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import PriceChart from "@/components/PriceChart";
-import PeriodFilter from "@/components/PeriodFilter";
+import StockPriceCard from "@/components/StockPriceCard";
 import AiInsightCard from "@/components/AiInsightCard";
 import NewsSourcesCard from "@/components/NewsSourcesCard";
 import WatchlistToggleButton from "@/components/WatchlistToggleButton";
@@ -118,8 +118,9 @@ export default async function StockDetailPage({
           <div className="card-head">
             <h3>시세 추이</h3>
           </div>
-          <PeriodFilter current={period} />
-          <PriceChart data={priceHistory} up={up} referencePrice={referencePrice} referenceLabel={referenceLabel} />
+          <StockPriceCard current={period}>
+            <PriceChart data={priceHistory} up={up} referencePrice={referencePrice} referenceLabel={referenceLabel} />
+          </StockPriceCard>
         </div>
 
         <AiInsightCard insight={insight} showNews={false} />
