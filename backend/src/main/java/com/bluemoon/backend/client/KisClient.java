@@ -31,6 +31,8 @@ import java.util.Optional;
 public class KisClient {
 
     private static final String TOKEN_CACHE_KEY = "kis:access_token";
+    private static final String TOKEN_FAILURE_CACHE_KEY = "kis:access_token:failed";
+    private static final Duration TOKEN_FAILURE_BACKOFF = Duration.ofSeconds(60);
     private static final String PRICE_TR_ID = "FHKST01010100";
     private static final String FLUCTUATION_RANK_TR_ID = "FHPST01700000";
     private static final String VOLUME_RANK_TR_ID = "FHPST01710000";
@@ -315,11 +317,21 @@ public class KisClient {
         }
     }
 
-    /** 접근토큰은 발급 API 자체가 분당 1회로 제한되어 있어 Redis에 캐싱해 재사용한다. */
+    /**
+     * 접근토큰은 발급 API 자체가 분당 1회로 제한되어 있어 Redis에 캐싱해 재사용한다.
+     * 발급 실패도 {@link #TOKEN_FAILURE_BACKOFF} 동안 Redis에 캐싱한다 — 실패를 캐싱하지 않으면
+     * (예: KIS 장애나 앱키 문제로 계속 실패하는 동안) 이 메서드를 호출하는 모든 요청이 매번 다시
+     * 발급을 시도하게 되어, 분당 1회 제한을 훨씬 초과해 KIS를 두드리게 되고 결국 앱키가 일시
+     * 제한당하는 사태로 이어질 수 있다.
+     */
     private synchronized String getAccessToken() {
         String cached = redisTemplate.opsForValue().get(TOKEN_CACHE_KEY);
         if (cached != null) {
             return cached;
+        }
+
+        if (redisTemplate.hasKey(TOKEN_FAILURE_CACHE_KEY)) {
+            return null;
         }
 
         try {
@@ -333,6 +345,7 @@ public class KisClient {
 
             if (response == null || response.accessToken() == null) {
                 log.warn("KIS 접근토큰 발급 실패");
+                redisTemplate.opsForValue().set(TOKEN_FAILURE_CACHE_KEY, "1", TOKEN_FAILURE_BACKOFF);
                 return null;
             }
 
@@ -341,6 +354,7 @@ public class KisClient {
             return response.accessToken();
         } catch (Exception e) {
             log.warn("KIS 접근토큰 발급 중 오류 — error={}", e.getMessage());
+            redisTemplate.opsForValue().set(TOKEN_FAILURE_CACHE_KEY, "1", TOKEN_FAILURE_BACKOFF);
             return null;
         }
     }
