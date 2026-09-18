@@ -28,7 +28,7 @@ export default function Sidebar() {
         <div className="brand">
           블루문<span>.</span>
         </div>
-        <div className="brand-sub">근거 있는 투자 기록</div>
+        <div className="brand-sub">근거 있는 모의 투자 기록</div>
       </div>
       <nav>
         {NAV_ITEMS.map((item) => {

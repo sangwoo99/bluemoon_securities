@@ -75,7 +75,7 @@ export default function LoginPage() {
             블루문<span>.</span>
           </div>
           <div className="brand-sub" style={{ padding: 0, marginTop: 4 }}>
-            근거 있는 투자 기록
+            근거 있는 모의 투자 기록
           </div>
         </div>
 
