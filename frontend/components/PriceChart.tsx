@@ -43,6 +43,7 @@ export default function PriceChart({
   referencePrice,
   referenceLabel,
   extendedPrices,
+  maWindow: maWindowOverride,
   showMA = false,
   showBollinger = false,
 }: {
@@ -54,6 +55,8 @@ export default function PriceChart({
   /** data보다 앞선 lookback 구간까지 포함한 종가 배열 — 이동평균/볼린저 밴드가 화면 첫 지점부터
    * 그려지도록 함(끝 data.length개가 data와 1:1로 대응). 없으면 data만으로 계산해 앞부분 일부는 비게 된다. */
   extendedPrices?: number[];
+  /** 이동평균/볼린저 밴드 기간. 안 넘기면 데이터 길이에 비례해 자동으로 정한다(movingAverageWindow). */
+  maWindow?: number;
   showMA?: boolean;
   showBollinger?: boolean;
 }) {
@@ -66,7 +69,7 @@ export default function PriceChart({
 
   const color = up ? "#FF5C5C" : "#4C8DFF";
   const prices = data.map((d) => d.price);
-  const maWindow = movingAverageWindow(data.length);
+  const maWindow = maWindowOverride ?? movingAverageWindow(data.length);
   const showIndicators = showMA || showBollinger;
   const series = extendedPrices && extendedPrices.length >= data.length ? extendedPrices : prices;
   const offset = series.length - data.length;

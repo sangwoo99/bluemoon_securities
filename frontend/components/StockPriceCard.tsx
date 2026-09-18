@@ -27,6 +27,7 @@ export default function StockPriceCard({
   referencePrice,
   referenceLabel,
   extendedPrices,
+  maWindow,
   canShowIndicators,
 }: {
   current: string;
@@ -35,6 +36,7 @@ export default function StockPriceCard({
   referencePrice?: number;
   referenceLabel?: string;
   extendedPrices?: number[];
+  maWindow?: number;
   canShowIndicators: boolean;
 }) {
   const [isPending, startTransition] = useTransition();
@@ -90,6 +92,7 @@ export default function StockPriceCard({
             referencePrice={referencePrice}
             referenceLabel={referenceLabel}
             extendedPrices={canShowIndicators ? extendedPrices : undefined}
+            maWindow={canShowIndicators ? maWindow : undefined}
             showMA={canShowIndicators && showMA}
             showBollinger={canShowIndicators && showBollinger}
           />
