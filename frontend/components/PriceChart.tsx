@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useElementSize } from "@/lib/useElementSize";
 import type { PricePoint } from "@/lib/types";
 
@@ -22,6 +23,7 @@ export default function PriceChart({
   referenceLabel?: string;
 }) {
   const { ref, width, height } = useElementSize<HTMLDivElement>();
+  const [showCurrent, setShowCurrent] = useState(false);
 
   if (data.length === 0) {
     return <div className="empty-state">표시할 시세 데이터가 없습니다</div>;
@@ -76,7 +78,7 @@ export default function PriceChart({
     <div>
       <div className="chart-box" ref={ref}>
         {width > 0 && height > 0 && (
-          <svg width={width} height={height}>
+          <svg width={width} height={height} onMouseEnter={() => setShowCurrent(true)} onMouseLeave={() => setShowCurrent(false)}>
             <defs>
               <linearGradient id="priceFill" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%" stopColor={color} stopOpacity={0.22} />
@@ -122,18 +124,25 @@ export default function PriceChart({
             )}
             {(() => {
               const last = points[points.length - 1];
-              const label = Math.round(last.price).toLocaleString();
-              const labelWidth = label.length * 6 + 8;
-              const labelX = Math.max(PAD_LEFT, width - PAD_RIGHT - labelWidth);
-              const labelCenterY = last.y - 14 >= PAD_TOP + 8 ? last.y - 14 : last.y + 14;
               return (
-                <g>
+                <>
                   <circle cx={last.x} cy={last.y} r={3} fill={color} />
-                  <rect x={labelX} y={labelCenterY - 8} width={labelWidth} height={16} rx={3} fill="#12161f" fillOpacity={0.9} />
-                  <text x={labelX + labelWidth / 2} y={labelCenterY} textAnchor="middle" dominantBaseline="middle" fontSize={10} fill={color}>
-                    {label}
-                  </text>
-                </g>
+                  {showCurrent &&
+                    (() => {
+                      const label = Math.round(last.price).toLocaleString();
+                      const labelWidth = label.length * 6 + 8;
+                      const labelX = Math.max(PAD_LEFT, width - PAD_RIGHT - labelWidth);
+                      const labelCenterY = last.y - 14 >= PAD_TOP + 8 ? last.y - 14 : last.y + 14;
+                      return (
+                        <g>
+                          <rect x={labelX} y={labelCenterY - 8} width={labelWidth} height={16} rx={3} fill="#12161f" fillOpacity={0.9} />
+                          <text x={labelX + labelWidth / 2} y={labelCenterY} textAnchor="middle" dominantBaseline="middle" fontSize={10} fill={color}>
+                            {label}
+                          </text>
+                        </g>
+                      );
+                    })()}
+                </>
               );
             })()}
           </svg>
