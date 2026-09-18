@@ -12,6 +12,7 @@ const RANK_TYPE_MAP: Record<string, string> = {
 };
 
 const PAGE_SIZE = 10;
+const PAGE_WINDOW = 5;
 
 export default async function StocksIndexPage({ searchParams }: { searchParams: Promise<{ rank?: string; page?: string }> }) {
   const resolvedSearchParams = await searchParams;
@@ -56,6 +57,13 @@ export default async function StocksIndexPage({ searchParams }: { searchParams: 
   });
   const totalPages = Math.max(1, Math.ceil(sortedAllStocks.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
+
+  // 페이지 번호를 전부 보여주면 종목이 많을 때 한 줄을 다 차지해서, currentPage 기준으로 최대
+  // PAGE_WINDOW(5)개만 보여주고 양 끝에서는 창을 안쪽으로 당긴다.
+  let pageWindowStart = Math.max(1, currentPage - Math.floor(PAGE_WINDOW / 2));
+  const pageWindowEnd = Math.min(totalPages, pageWindowStart + PAGE_WINDOW - 1);
+  pageWindowStart = Math.max(1, pageWindowEnd - PAGE_WINDOW + 1);
+  const pageNumbers = Array.from({ length: pageWindowEnd - pageWindowStart + 1 }, (_, i) => pageWindowStart + i);
 
   const rateOf = (s: StockDetail) => (s.prevClose !== 0 ? ((s.currentPrice - s.prevClose) / s.prevClose) * 100 : 0);
   const sortedTopMovers =
@@ -125,7 +133,7 @@ export default async function StocksIndexPage({ searchParams }: { searchParams: 
               >
                 ← 이전
               </Link>
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+              {pageNumbers.map((p) => (
                 <Link key={p} href={`/stocks?rank=all&page=${p}`} className={`chip${p === currentPage ? " active" : ""}`}>
                   {p}
                 </Link>
