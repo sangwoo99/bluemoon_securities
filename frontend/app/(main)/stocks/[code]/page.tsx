@@ -64,7 +64,9 @@ export default async function StockDetailPage({
   }
   if (!stock) notFound();
 
-  const showIndicators = period === "1m" || period === "3m";
+  // 3개월(60일선)은 운영 DB의 price_snapshots 과거 데이터가 아직 60일 lookback을 다 못 채워서
+  // 체크박스를 잠시 꺼둔다 — 운영 DB를 재백필한 뒤 다시 켤 것 (24a2cfd 이후 논의 참고).
+  const showIndicators = period === "1m";
 
   const [priceHistoryRaw, extendedHistoryRaw, intradayRaw, trades, insight, watchlist, holdings] = await Promise.all([
     isIntraday ? Promise.resolve(null) : safeGet<PricePoint[]>(`/api/stocks/${code}/price-history?days=${PERIOD_DAYS[period]}`),
