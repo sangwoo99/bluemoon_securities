@@ -1,5 +1,6 @@
 import Link from "next/link";
 import RankFilter from "@/components/RankFilter";
+import StockSearchInput from "@/components/StockSearchInput";
 import { apiGet } from "@/lib/api";
 import { fmtSignedWon, fmtPct, gainClass, gainArrow } from "@/lib/format";
 import type { Holding, StockDetail } from "@/lib/types";
@@ -14,11 +15,16 @@ const RANK_TYPE_MAP: Record<string, string> = {
 const PAGE_SIZE = 10;
 const PAGE_WINDOW = 5;
 
-export default async function StocksIndexPage({ searchParams }: { searchParams: Promise<{ rank?: string; page?: string }> }) {
+export default async function StocksIndexPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ rank?: string; page?: string; q?: string }>;
+}) {
   const resolvedSearchParams = await searchParams;
   const rank = resolvedSearchParams.rank === "volume" ? "volume" : resolvedSearchParams.rank === "fluctuation" ? "fluctuation" : "all";
   const rankType = RANK_TYPE_MAP[rank];
   const page = Math.max(1, parseInt(resolvedSearchParams.page ?? "1", 10) || 1);
+  const query = (resolvedSearchParams.q ?? "").trim();
 
   let allStocks: StockDetail[] = [];
   let topMovers: StockDetail[] = [];
@@ -50,8 +56,14 @@ export default async function StocksIndexPage({ searchParams }: { searchParams: 
   const heldCodes = new Set(holdings.map((h) => h.stockCode));
   const watchedCodes = new Set(watchlist.map((w) => w.code));
 
+  const matchesQuery = (s: StockDetail) => {
+    if (!query) return true;
+    const q = query.toLowerCase();
+    return s.name.toLowerCase().includes(q) || s.code.toLowerCase().includes(q);
+  };
+
   // AI 인사이트가 있는 종목을 먼저 보여줘 첫 페이지에서 바로 눈에 띄게 한다.
-  const sortedAllStocks = [...allStocks].sort((a, b) => {
+  const sortedAllStocks = [...allStocks].filter(matchesQuery).sort((a, b) => {
     if (!!a.hasInsight !== !!b.hasInsight) return a.hasInsight ? -1 : 1;
     return a.name.localeCompare(b.name, "ko");
   });
@@ -66,12 +78,15 @@ export default async function StocksIndexPage({ searchParams }: { searchParams: 
   const pageNumbers = Array.from({ length: pageWindowEnd - pageWindowStart + 1 }, (_, i) => pageWindowStart + i);
 
   const rateOf = (s: StockDetail) => (s.prevClose !== 0 ? ((s.currentPrice - s.prevClose) / s.prevClose) * 100 : 0);
-  const sortedTopMovers =
+  const sortedTopMovers = (
     rank === "volume"
       ? [...topMovers].sort((a, b) => (b.volume ?? 0) - (a.volume ?? 0))
-      : [...topMovers].sort((a, b) => rateOf(b) - rateOf(a));
+      : [...topMovers].sort((a, b) => rateOf(b) - rateOf(a))
+  ).filter(matchesQuery);
 
   const displayStocks = rank === "all" ? sortedAllStocks.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE) : sortedTopMovers;
+
+  const pageHref = (p: number) => `/stocks?rank=all&page=${p}${query ? `&q=${encodeURIComponent(query)}` : ""}`;
 
   return (
     <section>
@@ -83,6 +98,7 @@ export default async function StocksIndexPage({ searchParams }: { searchParams: 
       </div>
 
       <RankFilter current={rank} />
+      <StockSearchInput initialQuery={query} />
 
       {displayStocks.length > 0 ? (
         <div className="card">
@@ -127,33 +143,33 @@ export default async function StocksIndexPage({ searchParams }: { searchParams: 
           {rank === "all" && totalPages > 1 && (
             <div className="pagination">
               <Link
-                href={`/stocks?rank=all&page=1`}
+                href={pageHref(1)}
                 className={`chip${currentPage === 1 ? " disabled" : ""}`}
                 aria-disabled={currentPage === 1}
               >
                 «« 처음
               </Link>
               <Link
-                href={`/stocks?rank=all&page=${Math.max(1, currentPage - 1)}`}
+                href={pageHref(Math.max(1, currentPage - 1))}
                 className={`chip${currentPage === 1 ? " disabled" : ""}`}
                 aria-disabled={currentPage === 1}
               >
                 ← 이전
               </Link>
               {pageNumbers.map((p) => (
-                <Link key={p} href={`/stocks?rank=all&page=${p}`} className={`chip${p === currentPage ? " active" : ""}`}>
+                <Link key={p} href={pageHref(p)} className={`chip${p === currentPage ? " active" : ""}`}>
                   {p}
                 </Link>
               ))}
               <Link
-                href={`/stocks?rank=all&page=${Math.min(totalPages, currentPage + 1)}`}
+                href={pageHref(Math.min(totalPages, currentPage + 1))}
                 className={`chip${currentPage === totalPages ? " disabled" : ""}`}
                 aria-disabled={currentPage === totalPages}
               >
                 다음 →
               </Link>
               <Link
-                href={`/stocks?rank=all&page=${totalPages}`}
+                href={pageHref(totalPages)}
                 className={`chip${currentPage === totalPages ? " disabled" : ""}`}
                 aria-disabled={currentPage === totalPages}
               >
@@ -165,7 +181,7 @@ export default async function StocksIndexPage({ searchParams }: { searchParams: 
       ) : (
         <div className="empty-state">
           <div className="icon">📭</div>
-          불러올 수 있는 종목이 없습니다
+          {query ? `"${query}"에 해당하는 종목이 없습니다` : "불러올 수 있는 종목이 없습니다"}
         </div>
       )}
     </section>

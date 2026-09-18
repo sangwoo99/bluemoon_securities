@@ -304,6 +304,22 @@ tr.clickable:hover { background: var(--surface-2); }
 .chip:hover:not(.active) { border-color: var(--text-faint); color: var(--text); }
 .chip.disabled { opacity: 0.4; pointer-events: none; }
 
+.search-input {
+  display: block;
+  width: 100%;
+  max-width: 320px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 9px 13px;
+  border-radius: 8px;
+  font-size: 13.5px;
+  font-family: var(--font-inter), sans-serif;
+  margin-bottom: 18px;
+}
+.search-input::placeholder { color: var(--text-faint); }
+.search-input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+
 .chart-loading-wrap { position: relative; }
 .chart-loading-content { opacity: 0.35; pointer-events: none; transition: opacity 0.15s ease; }
 .chart-loading-overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
