@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import PriceChart from "@/components/PriceChart";
 import StockPriceCard from "@/components/StockPriceCard";
 import AiInsightCard from "@/components/AiInsightCard";
 import NewsSourcesCard from "@/components/NewsSourcesCard";
@@ -18,6 +17,9 @@ const PERIOD_DAYS: Record<string, number> = {
   "1y": 365,
 };
 const VALID_PERIODS = new Set(["1d", ...Object.keys(PERIOD_DAYS)]);
+/** 이동평균/볼린저 밴드 최대 기간(20)만큼 화면에 보일 구간보다 더 과거까지 받아와, 차트 첫 지점부터
+ * 지표가 바로 그려지도록 한다. 영업일 기준 20일치를 확보하려고 달력 기준으로 넉넉히 40일을 더 받는다. */
+const MA_LOOKBACK_BUFFER_DAYS = 40;
 
 async function safeGet<T>(path: string): Promise<T | null> {
   try {
@@ -55,8 +57,13 @@ export default async function StockDetailPage({
   }
   if (!stock) notFound();
 
-  const [priceHistoryRaw, intradayRaw, trades, insight, watchlist, holdings] = await Promise.all([
+  const showIndicators = period === "1m" || period === "3m" || period === "1y";
+
+  const [priceHistoryRaw, extendedHistoryRaw, intradayRaw, trades, insight, watchlist, holdings] = await Promise.all([
     isIntraday ? Promise.resolve(null) : safeGet<PricePoint[]>(`/api/stocks/${code}/price-history?days=${PERIOD_DAYS[period]}`),
+    isIntraday || !showIndicators
+      ? Promise.resolve(null)
+      : safeGet<PricePoint[]>(`/api/stocks/${code}/price-history?days=${PERIOD_DAYS[period] + MA_LOOKBACK_BUFFER_DAYS}`),
     isIntraday ? safeGet<IntradayPricePoint[]>(`/api/stocks/${code}/intraday`) : Promise.resolve(null),
     safeGet<Trade[]>(`/api/trades/${code}`),
     safeGet<Insight>(`/api/insights/${code}`),
@@ -67,13 +74,14 @@ export default async function StockDetailPage({
   const priceHistory: PricePoint[] = isIntraday
     ? (intradayRaw ?? []).map((p) => ({ date: formatIntradayLabel(p.time), price: p.price }))
     : (priceHistoryRaw ?? []).map((p) => ({ date: p.date.slice(5), price: p.price }));
+  // 화면에 보일 구간보다 앞선 lookback까지 포함한 종가만 필요하다 (날짜 레이블은 priceHistory 쪽만 씀).
+  const extendedPrices: number[] | undefined = extendedHistoryRaw?.map((p) => p.price);
 
   const isWatched = (watchlist ?? []).some((w) => w.code === code);
   const myHolding = (holdings ?? []).find((h) => h.stockCode === code);
 
   const referencePrice = isIntraday ? stock.prevClose : myHolding?.avgPrice;
   const referenceLabel = isIntraday ? "전일종가" : "내 평단가";
-  const showIndicators = period === "1m" || period === "3m" || period === "1y";
 
   const diff = stock.currentPrice - stock.prevClose;
   const rate = stock.prevClose !== 0 ? (diff / stock.prevClose) * 100 : 0;
@@ -115,18 +123,15 @@ export default async function StockDetailPage({
 
       <div className="grid grid-2" style={{ marginBottom: 16 }}>
         <div className="card">
-          <div className="card-head">
-            <h3>시세 추이</h3>
-          </div>
-          <StockPriceCard current={period}>
-            <PriceChart
-              data={priceHistory}
-              up={up}
-              referencePrice={referencePrice}
-              referenceLabel={referenceLabel}
-              showIndicators={showIndicators}
-            />
-          </StockPriceCard>
+          <StockPriceCard
+            current={period}
+            data={priceHistory}
+            up={up}
+            referencePrice={referencePrice}
+            referenceLabel={referenceLabel}
+            extendedPrices={extendedPrices}
+            canShowIndicators={showIndicators}
+          />
         </div>
 
         <AiInsightCard insight={insight} showNews={false} />

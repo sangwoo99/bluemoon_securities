@@ -17,10 +17,18 @@ function movingAverageWindow(length: number): number {
   return Math.max(5, Math.min(20, Math.floor(length / 3)));
 }
 
-function computeIndicators(prices: number[], window: number) {
+/**
+ * series는 화면에 보일 data보다 앞선 lookback 구간(extendedPrices)까지 포함할 수 있다 — offset은
+ * series 안에서 화면에 보이는 첫 지점의 인덱스. lookback이 충분하면 화면의 첫 지점부터 바로
+ * 이동평균/볼린저 밴드가 그려지고, lookback이 없거나 부족하면(offset=0) 기존처럼 window-1개 지점은
+ * 계산할 재료가 없어 건너뛴다.
+ */
+function computeIndicators(series: number[], offset: number, visibleLength: number, window: number) {
   const out: { index: number; sma: number; upper: number; lower: number }[] = [];
-  for (let i = window - 1; i < prices.length; i++) {
-    const slice = prices.slice(i - window + 1, i + 1);
+  for (let i = 0; i < visibleLength; i++) {
+    const abs = offset + i;
+    if (abs < window - 1) continue;
+    const slice = series.slice(abs - window + 1, abs + 1);
     const mean = slice.reduce((a, b) => a + b, 0) / window;
     const variance = slice.reduce((a, b) => a + (b - mean) ** 2, 0) / window;
     const stddev = Math.sqrt(variance);
@@ -34,15 +42,20 @@ export default function PriceChart({
   up,
   referencePrice,
   referenceLabel,
-  showIndicators = false,
+  extendedPrices,
+  showMA = false,
+  showBollinger = false,
 }: {
   data: PricePoint[];
   up: boolean;
   /** 전일종가(당일 차트) 또는 내 평단가(기간 차트)처럼, 가로 점선으로 표시할 기준가. */
   referencePrice?: number;
   referenceLabel?: string;
-  /** 이동평균선/볼린저 밴드 표시 여부 (기간이 너무 짧으면(당일/1주) 의미가 없어 호출하는 쪽에서 끈다). */
-  showIndicators?: boolean;
+  /** data보다 앞선 lookback 구간까지 포함한 종가 배열 — 이동평균/볼린저 밴드가 화면 첫 지점부터
+   * 그려지도록 함(끝 data.length개가 data와 1:1로 대응). 없으면 data만으로 계산해 앞부분 일부는 비게 된다. */
+  extendedPrices?: number[];
+  showMA?: boolean;
+  showBollinger?: boolean;
 }) {
   const { ref, width, height } = useElementSize<HTMLDivElement>();
   const [showCurrent, setShowCurrent] = useState(false);
@@ -54,13 +67,17 @@ export default function PriceChart({
   const color = up ? "#FF5C5C" : "#4C8DFF";
   const prices = data.map((d) => d.price);
   const maWindow = movingAverageWindow(data.length);
-  const indicators = showIndicators && data.length >= maWindow ? computeIndicators(prices, maWindow) : [];
+  const showIndicators = showMA || showBollinger;
+  const series = extendedPrices && extendedPrices.length >= data.length ? extendedPrices : prices;
+  const offset = series.length - data.length;
+  const indicators = showIndicators ? computeIndicators(series, offset, data.length, maWindow) : [];
 
   const hasReference = typeof referencePrice === "number";
   const allValues = [
     ...prices,
     ...(hasReference ? [referencePrice] : []),
-    ...indicators.flatMap((d) => [d.upper, d.lower]),
+    ...(showBollinger ? indicators.flatMap((d) => [d.upper, d.lower]) : []),
+    ...(showMA ? indicators.map((d) => d.sma) : []),
   ];
   const minPrice = Math.min(...allValues);
   const maxPrice = Math.max(...allValues);
@@ -91,7 +108,7 @@ export default function PriceChart({
   const upperPath = indicatorPoints.map((p, i) => `${i === 0 ? "M" : "L"}${p.x.toFixed(1)},${p.upper.toFixed(1)}`).join(" ");
   const lowerPath = indicatorPoints.map((p, i) => `${i === 0 ? "M" : "L"}${p.x.toFixed(1)},${p.lower.toFixed(1)}`).join(" ");
   const bandFillPath =
-    indicatorPoints.length > 0
+    showBollinger && indicatorPoints.length > 0
       ? `${upperPath} L${[...indicatorPoints].reverse().map((p) => `${p.x.toFixed(1)},${p.lower.toFixed(1)}`).join(" L")} Z`
       : "";
 
@@ -142,16 +159,20 @@ export default function PriceChart({
             {bandFillPath && <path d={bandFillPath} fill="#8b93a7" fillOpacity={0.06} stroke="none" />}
             <path d={areaPath} fill="url(#priceFill)" stroke="none" />
             <path d={linePath} fill="none" stroke={color} strokeWidth={2} />
-            {indicatorPoints.length > 0 && (
+            {showBollinger && indicatorPoints.length > 0 && (
               <>
                 <path d={upperPath} fill="none" stroke="#8b93a7" strokeWidth={1} strokeDasharray="3 3" />
                 <path d={lowerPath} fill="none" stroke="#8b93a7" strokeWidth={1} strokeDasharray="3 3" />
-                <path d={smaPath} fill="none" stroke="#ffb74a" strokeWidth={1.5} />
-                <text x={PAD_LEFT} y={PAD_TOP + 10} fontSize={10} fill="#ffb74a">
-                  MA{maWindow}
-                </text>
-                <text x={PAD_LEFT + 48} y={PAD_TOP + 10} fontSize={10} fill="#8b93a7">
+                <text x={PAD_LEFT} y={PAD_TOP + 10} fontSize={10} fill="#8b93a7">
                   볼린저밴드
+                </text>
+              </>
+            )}
+            {showMA && indicatorPoints.length > 0 && (
+              <>
+                <path d={smaPath} fill="none" stroke="#ffb74a" strokeWidth={1.5} />
+                <text x={showBollinger ? PAD_LEFT + 76 : PAD_LEFT} y={PAD_TOP + 10} fontSize={10} fill="#ffb74a">
+                  {maWindow}일 이동평균선
                 </text>
               </>
             )}
