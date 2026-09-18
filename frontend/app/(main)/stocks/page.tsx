@@ -127,6 +127,13 @@ export default async function StocksIndexPage({ searchParams }: { searchParams: 
           {rank === "all" && totalPages > 1 && (
             <div className="pagination">
               <Link
+                href={`/stocks?rank=all&page=1`}
+                className={`chip${currentPage === 1 ? " disabled" : ""}`}
+                aria-disabled={currentPage === 1}
+              >
+                «« 처음
+              </Link>
+              <Link
                 href={`/stocks?rank=all&page=${Math.max(1, currentPage - 1)}`}
                 className={`chip${currentPage === 1 ? " disabled" : ""}`}
                 aria-disabled={currentPage === 1}
@@ -144,6 +151,13 @@ export default async function StocksIndexPage({ searchParams }: { searchParams: 
                 aria-disabled={currentPage === totalPages}
               >
                 다음 →
+              </Link>
+              <Link
+                href={`/stocks?rank=all&page=${totalPages}`}
+                className={`chip${currentPage === totalPages ? " disabled" : ""}`}
+                aria-disabled={currentPage === totalPages}
+              >
+                끝 »»
               </Link>
             </div>
           )}
