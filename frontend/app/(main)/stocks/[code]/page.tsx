@@ -113,7 +113,7 @@ export default async function StockDetailPage({
             <h3>시세 추이</h3>
           </div>
           <PeriodFilter current={period} />
-          <PriceChart data={priceHistory} up={up} />
+          <PriceChart data={priceHistory} up={up} prevClose={stock.prevClose} />
         </div>
 
         <AiInsightCard insight={insight} showNews={false} />
